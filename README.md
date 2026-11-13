@@ -498,11 +498,3 @@ the operating system and the error shown by the tool.
 >
 > Although the tool has been extensively tested, complete absence of bugs, installation failures
 > or platform specific problems is not guaranteed.
-
----
-
-<div align="center">
-
-**Fetch. Decompile. Patch. Debug.**
-
-<—
