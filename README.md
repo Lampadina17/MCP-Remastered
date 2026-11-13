@@ -49,6 +49,28 @@ Diff against the previous version
 Carry the changes over
 ```
 
+## 🚀 Quick start
+
+Install **JDK 25+** and **Maven**. Make sure `java --version` and `mvn -version` both use Java 25+.
+From the project root on Windows (Command Prompt or PowerShell):
+
+```powershell
+.\setup.bat
+```
+
+On Linux or macOS:
+
+```sh
+sh setup.sh
+```
+
+The scripts compile the tool and start its JAR. The JAR already asks for the release channel and
+version interactively; the scripts add no questions and select no default version. Setup downloads
+what is needed and applies the matching repairs. Afterwards, reload Maven in IntelliJ and compile
+the game with `mvn clean install` or your IDE. Do not launch
+the game module before setup has completed. See [Running the game](#-running-the-game) for launch
+arguments and the manual cross-platform setup commands.
+
 ## ⚡ Features
 
 * ✅ **Interactive version picker**, with stable releases and snapshots kept apart
@@ -86,7 +108,7 @@ MCP Remastered walks through fourteen steps, and every one of them can be looked
 | 14 | Differential patch | The new version is compared against the previously processed one |
 
 Bytecode patches run before the decompiler on a separate jar when patches are registered. For
-26.3, seven patches are registered. They all recognise a shape in the bytecode and apply
+the exact releases 26.1, 26.2 and 26.3, the same seven patches are registered. They recognise a shape in the bytecode and apply
 everywhere that shape occurs, so a single patch covers every class that carries it.
 
 The patches live in `tool/src/main/java/mcp/remastered/engine/pipeline/patch/bytecode/fixes`. They
@@ -114,6 +136,12 @@ tree of the project and the baseline of the differential layer agree.
 
 For 26.3 there is one file, `fixes/26.3/decompiler-fixes.diff`, and it repairs eighty-eight
 classes. Failed repairs now stop preparation instead of publishing a partially repaired tree.
+
+26.1 and 26.2 have their own `fixes/<version>/decompiler-fixes.diff`, repairing 79 and 82 source
+files respectively. They reuse matching repairs and adapt moved packages, older APIs and generic
+inference failures. The 26.3 diff is not blindly applied to older releases: for example, its Vulkan
+and interval-density-function repairs target classes absent from these versions. Patch registration
+is exact, not a promise of compatibility with every snapshot or maintenance release.
 
 A difference that does not apply is not an error that passes unnoticed: the pipeline says which
 file and which piece did not fit, because that means the decompiler wrote something else than it
@@ -210,8 +238,11 @@ the tool:
 4. writes the result back to `src/main/java`, and
 5. leaves a report of the files that could not be merged automatically in `patches/<old>__<new>/`.
 
-The files that the new version brought in are added to the project, and the files that it removed
-are left alone, so that nothing is lost.
+The files that the new version brought in are added to the project. Known game sources absent
+from the new baseline are moved to `cache/orphaned-sources-*/`, outside the compiled source root,
+including any edits they contain. Unknown user-created files are kept in place. Case-only filename
+changes are reconciled on Windows/macOS too, so changing versions does not keep an old spelling
+such as `EnderMan.java` around a new `Enderman` declaration.
 
 Some files still come out of the decompiler with compilation errors, and most of them cannot be
 fixed in the bytecode. A type witness the compiler wrote and then erased, a cast between two
@@ -335,18 +366,38 @@ MCP Remastered/
 The root Maven project is the aggregator of the two: `tool/` builds the tool, `game/` builds the
 game from `src/main/java`. The tool does not export a game jar.
 
-From the command line the tool is run on the game module, which has the classes of the tool and
-the libraries of the game on its classpath:
+For a clean checkout, install JDK 25+ and Maven, and set `JAVA_HOME`/`PATH` to that JDK.
+On Windows, run from Command Prompt or PowerShell:
+
+```powershell
+.\setup.bat
+```
+
+On Linux or macOS, use `sh setup.sh`. The `.bat` needs no PowerShell execution-policy
+changes; the `.sh` uses POSIX shell syntax and needs no Bash-specific features. Running it with `sh`
+does not require setting an executable bit.
+
+Both scripts check Java and Maven, run `mvn -pl tool -am clean package`, and start the resulting
+interactive JAR. They stop if the tool build fails. Arguments, if supplied, are passed directly
+to the JAR, for example `setup.bat --version 26.2` or `sh setup.sh --version 26.2`. They do not
+compile the game automatically. `JAVA_HOME`, when set, takes precedence over Java on `PATH`.
+
+The equivalent manual sequence (also usable on other platforms) is:
 
 ```bash
 mvn -pl tool -am package                           # build the tool before downloading game libraries
-mvn -pl tool validate exec:exec "-Dexec.args=--version 26.3"
-mvn install                                       # compile the prepared game and install both modules
-mvn -o -pl game validate exec:exec "-Dexec.args=--launch --version 26.3 --username <name> --uuid <uuid> --token <token>"
+java -jar tool/target/mcp-remastered-1.0.0.jar          # choose the version interactively
+mvn clean install                                 # compile without stale classes from another game version
+mvn -o -pl game validate exec:exec "-Dexec.args=--launch --version 26.2 --username <name> --uuid <uuid> --token <token>"
 ```
 
 The libraries of the game have the `system` scope, which Maven keeps out of the runtime classpath,
 so the goal is told to use the scope of the test classpath, where they are all.
+
+Do not start the first setup through a `game` run configuration with a pre-launch build: its
+libraries do not exist yet. In IntelliJ, prepare the workspace from the terminal with the script
+or manual sequence above, reload all Maven projects, and only then use the Play configuration.
+After deleting `runtime/`, repeat setup before trying to compile or launch the game.
 
 Run Maven itself with Java 25 (`JAVA_HOME` and `PATH`), not Java 8. The compiler toolchain does not
 necessarily select the JVM used by every plugin or launched process. Omit `-o` on the first build
@@ -360,13 +411,35 @@ the managed library profile in `game/pom.xml`. Compile the game only after setup
 reload Maven in IntelliJ. `--overwrite-sources` is for deliberately replacing existing generated
 sources, not a requirement for the first setup.
 
+Do not delete only `cache/baseline*` while keeping game sources: without a baseline, the tool
+cannot identify your edits for merging. Preparation rejects that state rather than silently
+overwriting sources. Back up edits and explicitly regenerate with `--overwrite-sources`, or use
+a separate clean workspace. Back up `cache/orphaned-sources-*` before deleting the cache if it
+contains old-version edits you want to keep.
+
 Build outputs (`target/`, `tool/target/`, `game/target/`), extracted sources/resources, `cache/`,
 `patches/` and downloaded runtime files can be regenerated. Back up source edits before removing
 generated sources. **Deleting `runtime/game` also deletes saves, screenshots and player settings**;
 do that only when intentionally resetting local game data. Keep `fixes/`, tool sources and project
 configuration: they are inputs, not disposable output.
 
-### Validation performed for 26.3
+### Validation performed for 26.1–26.3
+
+| Release | ASM-modified classes verified by the JVM | Version-specific repaired files | Decompiled Java files compiled |
+|---------|-----------------------------------------|--------------------------------|--------------------------------|
+| 26.1 | 830 | 79 | 6,882 |
+| 26.2 | 873 | 82 | 7,055 |
+| 26.3 | 885 | 88 | 7,301 |
+
+All three source compilations completed with zero errors and 11 warnings. For 26.1 and 26.2,
+the production source-patch reader was checked against fresh raw sources: every file repair
+applied and reproduced the compiled source contents, ignoring only line-ending differences.
+Tests cover explicit ASM registration and parsing of all three version diffs.
+
+The older releases need additional inference repairs for collection-reading constructors,
+registry holders and loot codecs. In particular, the integer-to-float adaptation for constant color
+providers is written explicitly to match the original lambda bootstrap types. These changes do not
+replace the earlier versions' game algorithms with 26.3 implementations.
 
 The repair review verified application of all 88 file repairs and compilation of all 7,301
 decompiled Java files (zero errors; warnings remain). The regenerated intermediate ASM JAR passed
@@ -378,8 +451,9 @@ world-generation buffer cleanup loop and Vulkan feature-set defensive copies. Th
 codec keeps the original map getter instead of introducing an encoding-time copy. Alternative lambda
 metafactory protocols are excluded from the helper-extraction patch pending separate review.
 
-These checks and a successful local game launch do not prove complete gameplay equivalence or
-absence of other decompiler defects.
+These checks and a successful local 26.3 game launch do not prove complete gameplay equivalence or
+absence of other decompiler defects. The 26.1 and 26.2 validation above does not include a full game
+launch, world generation, multiplayer or rendering-backend test.
 
 ## 🎮 Debugging
 
@@ -419,7 +493,7 @@ and the real format of the game:
 
 The pipeline runs from the manifest down to the decompiled sources. Static comparisons,
 compilation checks and targeted runtime checks help identify regressions; their coverage and
-limitations matter more than a successful build alone. See the 26.3 validation summary above.
+limitations matter more than a successful build alone. See the version validation summary above.
 
 Game behavior can be tested, but the checks performed here do not exhaust all seeds, dimensions,
 entities, rendering backends, multiplayer scenarios or supported platforms.

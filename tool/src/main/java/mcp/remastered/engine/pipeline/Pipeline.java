@@ -441,6 +441,9 @@ public final class Pipeline {
     public void prepareSources(VersionJson version, Path clientJar, List<Path> libraries, boolean overwrite) throws IOException {
         Path baseline = workspace.baseline();
         String baselineId = readText(workspace.baselineVersion());
+        if (!overwrite && baselineId == null && !Tree.files(workspace.sources(), ".java").isEmpty()) {
+            throw new IOException("Game sources already exist but their baseline is missing. Back up source edits and use --overwrite-sources to regenerate them explicitly, or prepare a separate workspace.");
+        }
         if (overwrite) {
             if (baselineId != null && !baselineId.equals(version.id)) {
                 throw new IOException("Cannot overwrite sources across versions; the baseline belongs to " + baselineId + ". Use the normal upgrade flow instead.");
@@ -457,8 +460,9 @@ public final class Pipeline {
                 }
                 console.println("  Overwriting matching game sources; unrelated files are kept.");
                 Tree.copyJava(staged, workspace.sources());
-                Tree.copyJava(staged, baseline);
+                Tree.replace(staged, baseline);
                 writeText(workspace.baselineVersion(), version.id);
+                reconcileSources(baseline);
             } finally {
                 Tree.delete(staged);
             }
@@ -495,6 +499,14 @@ public final class Pipeline {
         } else {
             console.println("  The sources of " + version.id + " are already in place, the changes are kept.");
         }
+        reconcileSources(baseline);
+    }
+
+    private void reconcileSources(Path baseline) throws IOException {
+        SourceReconciler.Result result = SourceReconciler.reconcile(workspace.sources(), baseline,
+                SourceReconciler.sourcePaths(workspace.versions()), workspace.cache());
+        if (result.renamed() > 0) console.println("  Corrected source filename case: " + result.renamed() + ".");
+        if (result.archived() > 0) console.println("  Obsolete game sources archived: " + result.archived() + " in " + result.archive());
     }
 
     /**

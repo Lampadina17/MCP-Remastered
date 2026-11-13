@@ -165,7 +165,8 @@ public final class UnifiedDiff {
                     } else {
                         throw new IllegalArgumentException("Invalid diff body near: " + line);
                     }
-                    if (oldRemaining < 0 || newRemaining < 0) throw new IllegalArgumentException("Diff hunk count mismatch: " + line);
+                    if (oldRemaining < 0 || newRemaining < 0)
+                        throw new IllegalArgumentException("Diff hunk count mismatch: " + line);
                     index++;
                 }
                 hunks.add(new Hunk(before, after, start));

@@ -52,10 +52,7 @@ public final class BytecodePatcher {
                 }
                 // Modified classes cannot retain the original publisher's JAR signature.
                 String upper = entry.getName().toUpperCase(java.util.Locale.ROOT);
-                if (upper.startsWith("META-INF/") && upper.indexOf('/', 9) < 0
-                        && (upper.endsWith(".SF") || upper.endsWith(".RSA")
-                        || upper.endsWith(".DSA") || upper.endsWith(".EC")
-                        || upper.substring(9).startsWith("SIG-"))) {
+                if (upper.startsWith("META-INF/") && upper.indexOf('/', 9) < 0 && (upper.endsWith(".SF") || upper.endsWith(".RSA") || upper.endsWith(".DSA") || upper.endsWith(".EC") || upper.substring(9).startsWith("SIG-"))) {
                     continue;
                 }
 

@@ -29,7 +29,7 @@ public final class BytecodeFixes {
      */
     public static List<BytecodePatch> forVersion(String version) {
         return switch (version) {
-            case "26.3" -> List.of(
+            case "26.1", "26.2", "26.3" -> List.of(
                     // A superclass method that returns its own type needs the conversion back.
                     new GenericSuperReturn(),
                     // The same, for the method of the class itself.

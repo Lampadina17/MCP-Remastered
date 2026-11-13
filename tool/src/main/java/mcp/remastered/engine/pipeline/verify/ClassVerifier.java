@@ -185,8 +185,7 @@ public final class ClassVerifier {
     private static String bootstrap(InvokeDynamicInsnNode indy) {
         Handle handle = indy.bsm;
         if (handle == null) return "?";
-        if (handle.getOwner().equals("java/lang/invoke/LambdaMetafactory") && indy.bsmArgs.length >= 2
-                && indy.bsmArgs[1] instanceof Handle sam) {
+        if (handle.getOwner().equals("java/lang/invoke/LambdaMetafactory") && indy.bsmArgs.length >= 2 && indy.bsmArgs[1] instanceof Handle sam) {
             return "metafactory su " + sam.getOwner() + "." + sam.getName() + sam.getDesc();
         }
         return handle.getOwner() + "." + handle.getName() + handle.getDesc();

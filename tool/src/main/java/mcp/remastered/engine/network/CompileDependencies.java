@@ -108,8 +108,8 @@ public final class CompileDependencies {
         if (version.libraries == null) return jars;
         Path root = libraries.toAbsolutePath().normalize();
         for (VersionJson.Library library : version.libraries) {
-            if (library.name == null || library.name.split(":", -1).length != 3
-                    || library.downloads == null || library.downloads.artifact == null) continue;
+            if (library.name == null || library.name.split(":", -1).length != 3 || library.downloads == null || library.downloads.artifact == null)
+                continue;
             VersionJson.LibraryArtifact artifact = library.downloads.artifact;
             if (artifact.path == null || artifact.url == null || !artifact.path.endsWith(".jar")) continue;
             Path jar = root.resolve(artifact.path).normalize();

@@ -127,13 +127,7 @@ public final class Main {
      */
     private static void runtime(Path root, Path jar, Path classes, String version, String[] args) throws IOException, InterruptedException {
         int seconds = Integer.parseInt(argument(args, "--seconds", "60"));
-        List<String> gameArguments = List.of(
-                "--launch",
-                "--version", version,
-                "--username", argument(args, "--username", "Lampadina_17"),
-                "--uuid", argument(args, "--uuid", "f769c798-1743-4cf0-9600-08ade6a4bb8f"),
-                "--token", argument(args, "--token", "0")
-        );
+        List<String> gameArguments = List.of("--launch", "--version", version, "--username", argument(args, "--username", "Lampadina_17"), "--uuid", argument(args, "--uuid", "f769c798-1743-4cf0-9600-08ade6a4bb8f"), "--token", argument(args, "--token", "0"));
         System.out.println("Prima esecuzione: il bytecode con cui il gioco e' stato costruito.");
         System.out.println("Seconda esecuzione: le classi ricompilate dai sorgenti decompilati.");
         System.out.println();

@@ -1,4 +1,6 @@
 * text=auto eol=lf
+*.bat text eol=crlf
+*.sh text eol=lf
 
 # Blank context lines in unified patches intentionally contain a space.
-*.diff text eol=lf whitespace=-blank-at-eol
+*.diff text eol=lf whitespace=-blank-at-eol,-blank-at-eof

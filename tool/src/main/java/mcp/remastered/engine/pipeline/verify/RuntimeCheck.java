@@ -24,11 +24,7 @@ import java.util.concurrent.TimeUnit;
  */
 public final class RuntimeCheck {
 
-    private static final String[] VOLATILE = {
-            "Resizing ",
-            "Preparing spawn area",
-            "logged in with entity id"
-    };
+    private static final String[] VOLATILE = {"Resizing ", "Preparing spawn area", "logged in with entity id"};
 
     private RuntimeCheck() {
     }

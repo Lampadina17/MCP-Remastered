@@ -31,10 +31,9 @@ public final class ComparatorMethodReference implements BytecodePatch {
             for (AbstractInsnNode insn = method.instructions.getFirst(); insn != null; insn = insn.getNext()) {
                 if (!(insn instanceof InvokeDynamicInsnNode indy) || !validLambda(indy)) continue;
                 AbstractInsnNode next = opcode(indy.getNext());
-                if (next instanceof FieldInsnNode field && field.getOpcode() == Opcodes.GETSTATIC
-                        && field.desc.equals("Ljava/util/Comparator;")) next = opcode(next.getNext());
-                if (!(next instanceof MethodInsnNode comparing) || comparing.getOpcode() != Opcodes.INVOKESTATIC
-                        || !comparing.owner.equals(COMPARATOR) || !comparing.itf || !isComparing(indy, comparing))
+                if (next instanceof FieldInsnNode field && field.getOpcode() == Opcodes.GETSTATIC && field.desc.equals("Ljava/util/Comparator;"))
+                    next = opcode(next.getNext());
+                if (!(next instanceof MethodInsnNode comparing) || comparing.getOpcode() != Opcodes.INVOKESTATIC || !comparing.owner.equals(COMPARATOR) || !comparing.itf || !isComparing(indy, comparing))
                     continue;
                 FieldInsnNode destination = destination(opcode(next.getNext()), clazz.name);
                 if (destination == null) continue;
@@ -46,9 +45,7 @@ public final class ComparatorMethodReference implements BytecodePatch {
                 Type result = methodType.getReturnType();
                 if (indy.desc.equals(FUNCTION) && result.getSort() != Type.OBJECT && result.getSort() != Type.ARRAY)
                     continue;
-                String signature = indy.desc.equals(INT_FUNCTION)
-                        ? "()Ljava/util/function/ToIntFunction<" + input + ">;"
-                        : "()Ljava/util/function/Function<" + input + result.getDescriptor() + ">;";
+                String signature = indy.desc.equals(INT_FUNCTION) ? "()Ljava/util/function/ToIntFunction<" + input + ">;" : "()Ljava/util/function/Function<" + input + result.getDescriptor() + ">;";
                 String name = "mcp$comparatorTarget$" + helpers.size();
                 while (hasMethod(clazz, helpers, name)) name += "$";
                 MethodNode helper = new MethodNode(Opcodes.ACC_PRIVATE | Opcodes.ACC_STATIC, name, indy.desc, signature, null);
@@ -69,20 +66,17 @@ public final class ComparatorMethodReference implements BytecodePatch {
     private static boolean validLambda(InvokeDynamicInsnNode indy) {
         if (!(indy.desc.equals(FUNCTION) && indy.name.equals("apply") || indy.desc.equals(INT_FUNCTION) && indy.name.equals("applyAsInt")))
             return false;
-        if (!indy.bsm.getOwner().equals("java/lang/invoke/LambdaMetafactory") || !indy.bsm.getName().equals("metafactory")
-                || indy.bsmArgs.length != 3 || !(indy.bsmArgs[1] instanceof Handle handle)
-                || !(indy.bsmArgs[2] instanceof Type type) || type.getSort() != Type.METHOD) return false;
+        if (!indy.bsm.getOwner().equals("java/lang/invoke/LambdaMetafactory") || !indy.bsm.getName().equals("metafactory") || indy.bsmArgs.length != 3 || !(indy.bsmArgs[1] instanceof Handle handle) || !(indy.bsmArgs[2] instanceof Type type) || type.getSort() != Type.METHOD)
+            return false;
         if (handle.getTag() != Opcodes.H_INVOKEVIRTUAL && handle.getTag() != Opcodes.H_INVOKEINTERFACE) return false;
         Type[] args = type.getArgumentTypes();
-        return args.length == 1 && args[0].getSort() == Type.OBJECT
-                && (!indy.desc.equals(INT_FUNCTION) || type.getReturnType().equals(Type.INT_TYPE));
+        return args.length == 1 && args[0].getSort() == Type.OBJECT && (!indy.desc.equals(INT_FUNCTION) || type.getReturnType().equals(Type.INT_TYPE));
     }
 
     private static boolean isComparing(InvokeDynamicInsnNode indy, MethodInsnNode call) {
-        if (indy.desc.equals(INT_FUNCTION)) return call.name.equals("comparingInt")
-                && call.desc.equals("(Ljava/util/function/ToIntFunction;)Ljava/util/Comparator;");
-        return call.name.equals("comparing") && (call.desc.equals("(Ljava/util/function/Function;)Ljava/util/Comparator;")
-                || call.desc.equals("(Ljava/util/function/Function;Ljava/util/Comparator;)Ljava/util/Comparator;"));
+        if (indy.desc.equals(INT_FUNCTION))
+            return call.name.equals("comparingInt") && call.desc.equals("(Ljava/util/function/ToIntFunction;)Ljava/util/Comparator;");
+        return call.name.equals("comparing") && (call.desc.equals("(Ljava/util/function/Function;)Ljava/util/Comparator;") || call.desc.equals("(Ljava/util/function/Function;Ljava/util/Comparator;)Ljava/util/Comparator;"));
     }
 
     private static FieldInsnNode destination(AbstractInsnNode insn, String owner) {
@@ -98,10 +92,7 @@ public final class ComparatorMethodReference implements BytecodePatch {
                 insn = opcode(insn.getNext());
                 continue;
             }
-            if (insn instanceof MethodInsnNode call && call.getOpcode() == Opcodes.INVOKEINTERFACE && call.owner.equals(COMPARATOR)
-                    && (call.name.equals("reversed") && call.desc.equals("()Ljava/util/Comparator;")
-                    || call.name.equals("thenComparing") && (call.desc.equals("(Ljava/util/function/Function;)Ljava/util/Comparator;")
-                    || call.desc.equals("(Ljava/util/function/Function;Ljava/util/Comparator;)Ljava/util/Comparator;")))) {
+            if (insn instanceof MethodInsnNode call && call.getOpcode() == Opcodes.INVOKEINTERFACE && call.owner.equals(COMPARATOR) && (call.name.equals("reversed") && call.desc.equals("()Ljava/util/Comparator;") || call.name.equals("thenComparing") && (call.desc.equals("(Ljava/util/function/Function;)Ljava/util/Comparator;") || call.desc.equals("(Ljava/util/function/Function;Ljava/util/Comparator;)Ljava/util/Comparator;")))) {
                 insn = opcode(insn.getNext());
                 continue;
             }

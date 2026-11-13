@@ -1,0 +1,1134 @@
+diff --git a/net/minecraft/advancements/predicates/entity/PlayerPredicate.java b/net/minecraft/advancements/predicates/entity/PlayerPredicate.java
+--- a/net/minecraft/advancements/predicates/entity/PlayerPredicate.java
++++ b/net/minecraft/advancements/predicates/entity/PlayerPredicate.java
+@@ -256,11 +256,11 @@
+       private static <T> MapCodec<PlayerPredicate.StatMatcher<T>> createTypedCodec(final StatType<T> type) {
+          return RecordCodecBuilder.mapCodec(
+             i -> i.group(
+-                  (App<Mu<? extends PlayerPredicate.StatMatcher<?>>, Holder<T>>)type.getRegistry()
++                  type.getRegistry()
+                      .holderByNameCodec()
+                      .fieldOf("stat")
+                      .forGetter(PlayerPredicate.StatMatcher::value),
+-                  (App<Mu<? extends PlayerPredicate.StatMatcher<?>>, MinMaxBounds.Ints>)MinMaxBounds.Ints.CODEC
++                  MinMaxBounds.Ints.CODEC
+                      .optionalFieldOf("value", MinMaxBounds.Ints.ANY)
+                      .forGetter(PlayerPredicate.StatMatcher::range)
+                )
+diff --git a/net/minecraft/advancements/predicates/MinMaxBounds.java b/net/minecraft/advancements/predicates/MinMaxBounds.java
+--- a/net/minecraft/advancements/predicates/MinMaxBounds.java
++++ b/net/minecraft/advancements/predicates/MinMaxBounds.java
+@@ -76,7 +76,7 @@
+       }
+ 
+       public static <T extends Number & Comparable<T>> MinMaxBounds.Bounds<T> any() {
+-         return new MinMaxBounds.Bounds<>(Optional.empty(), Optional.empty());
++         return new MinMaxBounds.Bounds<T>(Optional.empty(), Optional.empty());
+       }
+ 
+       public static <T extends Number & Comparable<T>> MinMaxBounds.Bounds<T> exactly(final T value) {
+diff --git a/net/minecraft/client/gui/components/ChatComponent.java b/net/minecraft/client/gui/components/ChatComponent.java
+--- a/net/minecraft/client/gui/components/ChatComponent.java
++++ b/net/minecraft/client/gui/components/ChatComponent.java
+@@ -455,7 +455,7 @@
+    }
+ 
+    public void openScreen(final ChatComponent.ChatMethod chatMethod, final ChatScreen.ChatConstructor<?> chat) {
+-      this.minecraft.gui.setScreen(this.createScreen(chatMethod, (ChatScreen.ChatConstructor<Screen>)chat));
++      this.minecraft.gui.setScreen(this.createScreen(chatMethod, chat));
+    }
+ 
+    public void preserveCurrentChatScreen() {
+diff --git a/net/minecraft/client/gui/screens/inventory/BookViewScreen.java b/net/minecraft/client/gui/screens/inventory/BookViewScreen.java
+--- a/net/minecraft/client/gui/screens/inventory/BookViewScreen.java
++++ b/net/minecraft/client/gui/screens/inventory/BookViewScreen.java
+@@ -271,7 +271,7 @@
+          }
+ 
+          WritableBookContent writableContent = itemStack.get(DataComponents.WRITABLE_BOOK_CONTENT);
+-         return writableContent != null ? new BookViewScreen.BookAccess(writableContent.getPages(filterEnabled).map(Component::literal).toList()) : null;
++         return writableContent != null ? new BookViewScreen.BookAccess(writableContent.getPages(filterEnabled).<Component>map(Component::literal).toList()) : null;
+       }
+    }
+ }
+diff --git a/net/minecraft/client/gui/screens/PresetFlatWorldScreen.java b/net/minecraft/client/gui/screens/PresetFlatWorldScreen.java
+--- a/net/minecraft/client/gui/screens/PresetFlatWorldScreen.java
++++ b/net/minecraft/client/gui/screens/PresetFlatWorldScreen.java
+@@ -281,7 +281,7 @@
+          public Entry(final Holder<FlatLevelGeneratorPreset> preset) {
+             this.preset = preset.value();
+             this.name = preset.unwrapKey()
+-               .map(key -> Component.translatable(key.identifier().toLanguageKey("flat_world_preset")))
++               .<Component>map(key -> Component.translatable(key.identifier().toLanguageKey("flat_world_preset")))
+                .orElse(PresetFlatWorldScreen.UNKNOWN_PRESET);
+          }
+ 
+diff --git a/net/minecraft/client/gui/screens/worldselection/WorldCreationUiState.java b/net/minecraft/client/gui/screens/worldselection/WorldCreationUiState.java
+--- a/net/minecraft/client/gui/screens/worldselection/WorldCreationUiState.java
++++ b/net/minecraft/client/gui/screens/worldselection/WorldCreationUiState.java
+@@ -315,7 +315,7 @@
+       public Component describePreset() {
+          return Optional.ofNullable(this.preset)
+             .flatMap(Holder::unwrapKey)
+-            .map(key -> Component.translatable(key.identifier().toLanguageKey("generator")))
++            .<Component>map(key -> Component.translatable(key.identifier().toLanguageKey("generator")))
+             .orElse(CUSTOM_WORLD_DESCRIPTION);
+       }
+ 
+diff --git a/net/minecraft/client/Minecraft.java b/net/minecraft/client/Minecraft.java
+--- a/net/minecraft/client/Minecraft.java
++++ b/net/minecraft/client/Minecraft.java
+@@ -2501,7 +2501,7 @@
+    }
+ 
+    public CompletableFuture<Void> delayTextureReload() {
+-      return this.<CompletableFuture<Void>>submit(this::reloadResourcePacks).thenCompose(result -> (CompletionStage<Void>)result);
++      return this.<CompletableFuture<Void>>submit((java.util.function.Supplier<CompletableFuture<Void>>) this::reloadResourcePacks).thenCompose(result -> (CompletionStage<Void>)result);
+    }
+ 
+    public void updateReportEnvironment(final ReportEnvironment environment) {
+diff --git a/net/minecraft/client/OptionInstance.java b/net/minecraft/client/OptionInstance.java
+--- a/net/minecraft/client/OptionInstance.java
++++ b/net/minecraft/client/OptionInstance.java
+@@ -237,7 +237,7 @@
+          final int width,
+          final OptionInstance.ValueUpdateListener<? super T> onValueChanged
+       ) {
+-         return instance -> CycleButton.builder(instance.toString, instance::get)
++         return instance -> CycleButton.builder(instance.toString, (java.util.function.Supplier<T>) instance::get)
+             .withValues(this.valueListSupplier())
+             .withTooltip(tooltip)
+             .create(x, y, width, 20, instance.caption, (var4x, value) -> {
+diff --git a/net/minecraft/client/renderer/block/dispatch/VariantSelector.java b/net/minecraft/client/renderer/block/dispatch/VariantSelector.java
+--- a/net/minecraft/client/renderer/block/dispatch/VariantSelector.java
++++ b/net/minecraft/client/renderer/block/dispatch/VariantSelector.java
+@@ -26,7 +26,7 @@
+             Property<?> property = stateDefinition.getProperty(propertyName);
+             if (property != null && iterator.hasNext()) {
+                String propertyValue = iterator.next();
+-               Comparable<?> value = getValueHelper((Property<Comparable<?>>)property, propertyValue);
++               Comparable<?> value = getValueHelper(property, propertyValue);
+                if (value == null) {
+                   throw new RuntimeException(
+                      "Unknown value: '" + propertyValue + "' for blockstate property: '" + propertyName + "' " + property.getPossibleValues()
+diff --git a/net/minecraft/client/renderer/blockentity/BeaconRenderer.java b/net/minecraft/client/renderer/blockentity/BeaconRenderer.java
+--- a/net/minecraft/client/renderer/blockentity/BeaconRenderer.java
++++ b/net/minecraft/client/renderer/blockentity/BeaconRenderer.java
+@@ -117,7 +117,7 @@
+       submitNodeCollector.submitCustomGeometry(
+          poseStack,
+          RenderTypes.beaconBeam(beamLocation, false),
+-         (pose, buffer) -> renderPart(pose, buffer, color, beamStart, beamEnd, 0.0F, wnz, enx, 0.0F, wsx, 0.0F, 0.0F, esz, 0.0F, 1.0F, vv1, vv2)
++         (pose, buffer) -> renderPart(pose, buffer, color, beamStart, beamEnd, 0.0F, solidBeamRadius, solidBeamRadius, 0.0F, -solidBeamRadius, 0.0F, 0.0F, -solidBeamRadius, 0.0F, 1.0F, height * scale * (0.5F / solidBeamRadius) + (-1.0F + texVOff), -1.0F + texVOff)
+       );
+       poseStack.popPose();
+       wnx = -beamGlowRadius;
+@@ -135,7 +135,7 @@
+       submitNodeCollector.submitCustomGeometry(
+          poseStack,
+          RenderTypes.beaconBeam(beamLocation, true),
+-         (pose, buffer) -> renderPart(pose, buffer, ARGB.color(32, color), beamStart, beamEnd, wnx, wnz, enx, enz, wsx, wsz, esx, esz, 0.0F, 1.0F, vv1, vv2)
++         (pose, buffer) -> renderPart(pose, buffer, ARGB.color(32, color), beamStart, beamEnd, -beamGlowRadius, -beamGlowRadius, beamGlowRadius, -beamGlowRadius, -beamGlowRadius, beamGlowRadius, beamGlowRadius, beamGlowRadius, 0.0F, 1.0F, height * scale + (-1.0F + texVOff), -1.0F + texVOff)
+       );
+       poseStack.popPose();
+    }
+diff --git a/net/minecraft/client/renderer/entity/EntityRenderDispatcher.java b/net/minecraft/client/renderer/entity/EntityRenderDispatcher.java
+--- a/net/minecraft/client/renderer/entity/EntityRenderDispatcher.java
++++ b/net/minecraft/client/renderer/entity/EntityRenderDispatcher.java
+@@ -90,8 +90,8 @@
+ 
+    public <T extends Entity> EntityRenderer<? super T, ?> getRenderer(final T entity) {
+       return switch (entity) {
+-         case AbstractClientPlayer player -> this.getAvatarRenderer((Map<PlayerModelType, AvatarRenderer<T>>)this.playerRenderers, (T)player);
+-         case ClientMannequin mannequin -> this.getAvatarRenderer((Map<PlayerModelType, AvatarRenderer<T>>)this.mannequinRenderers, (T)mannequin);
++         case AbstractClientPlayer player -> (EntityRenderer) this.getAvatarRenderer(this.playerRenderers, player);
++         case ClientMannequin mannequin -> (EntityRenderer) this.getAvatarRenderer(this.mannequinRenderers, mannequin);
+          default -> (EntityRenderer)this.renderers.get(entity.getType());
+       };
+    }
+diff --git a/net/minecraft/client/renderer/feature/ModelFeatureRenderer.java b/net/minecraft/client/renderer/feature/ModelFeatureRenderer.java
+--- a/net/minecraft/client/renderer/feature/ModelFeatureRenderer.java
++++ b/net/minecraft/client/renderer/feature/ModelFeatureRenderer.java
+@@ -62,7 +62,7 @@
+ 
+       @Override
+       public FeatureRendererType<ModelFeatureRenderer.Submit<S>> featureType() {
+-         return (FeatureRendererType<ModelFeatureRenderer.Submit<S>>)ModelFeatureRenderer.TYPE;
++         return (FeatureRendererType<ModelFeatureRenderer.Submit<S>>)(FeatureRendererType<?>)ModelFeatureRenderer.TYPE;
+       }
+    }
+ }
+diff --git a/net/minecraft/client/renderer/item/ConditionalItemModel.java b/net/minecraft/client/renderer/item/ConditionalItemModel.java
+--- a/net/minecraft/client/renderer/item/ConditionalItemModel.java
++++ b/net/minecraft/client/renderer/item/ConditionalItemModel.java
+@@ -83,7 +83,7 @@
+       private static <T extends ConditionalItemModelProperty> T swapContext(
+          final T originalProperty, final RegistryContextSwapper contextSwapper, final ClientLevel context
+       ) {
+-         return (T)contextSwapper.swapTo(originalProperty.type().codec(), originalProperty, context.registryAccess()).result().orElse(originalProperty);
++         return (T)contextSwapper.swapTo((com.mojang.serialization.Codec<T>) originalProperty.type().codec(), originalProperty, context.registryAccess()).result().orElse(originalProperty);
+       }
+ 
+       @Override
+diff --git a/net/minecraft/client/resources/model/ModelBakery.java b/net/minecraft/client/resources/model/ModelBakery.java
+--- a/net/minecraft/client/resources/model/ModelBakery.java
++++ b/net/minecraft/client/resources/model/ModelBakery.java
+@@ -244,7 +244,7 @@
+ 
+       @Override
+       public <T> T compute(final ModelBaker.SharedOperationKey<T> key) {
+-         return (T)this.operationCache.computeIfAbsent(key, this.cacheComputeFunction);
++         return (T)this.operationCache.computeIfAbsent((ModelBaker.SharedOperationKey<Object>)(ModelBaker.SharedOperationKey<?>)key, this.cacheComputeFunction);
+       }
+    }
+ }
+diff --git a/net/minecraft/commands/arguments/ArgumentSignatures.java b/net/minecraft/commands/arguments/ArgumentSignatures.java
+--- a/net/minecraft/commands/arguments/ArgumentSignatures.java
++++ b/net/minecraft/commands/arguments/ArgumentSignatures.java
+@@ -14,7 +14,7 @@
+    private static final int MAX_ARGUMENT_NAME_LENGTH = 16;
+ 
+    public ArgumentSignatures(final FriendlyByteBuf input) {
+-      this(input.readCollection(FriendlyByteBuf.limitValue(ArrayList::new, 8), ArgumentSignatures.Entry::new));
++      this(input.<ArgumentSignatures.Entry, List<ArgumentSignatures.Entry>>readCollection(FriendlyByteBuf.limitValue(ArrayList::new, 8), ArgumentSignatures.Entry::new));
+    }
+ 
+    public void write(final FriendlyByteBuf output) {
+diff --git a/net/minecraft/commands/execution/tasks/BuildContexts.java b/net/minecraft/commands/execution/tasks/BuildContexts.java
+--- a/net/minecraft/commands/execution/tasks/BuildContexts.java
++++ b/net/minecraft/commands/execution/tasks/BuildContexts.java
+@@ -56,8 +56,8 @@
+                }
+ 
+                RedirectModifier<T> modifier = contextToRun.getRedirectModifier();
+-               if (modifier instanceof CustomModifierExecutor<T> customModifierExecutor) {
+-                  customModifierExecutor.apply(originalSource, currentSources, currentStage, modifiers, ExecutionControl.create(context, frame));
++               if ((Object) modifier instanceof CustomModifierExecutor<?> rawModifierExecutor) {
++                  ((CustomModifierExecutor<T>) rawModifierExecutor).apply(originalSource, currentSources, currentStage, modifiers, ExecutionControl.create(context, frame));
+                   return;
+                }
+ 
+@@ -95,15 +95,15 @@
+ 
+       if (currentSources.isEmpty()) {
+          if (modifiers.isReturn()) {
+-            context.queueNext(new CommandQueueEntry<>(frame, FallthroughTask.instance()));
++            context.queueNext(new CommandQueueEntry<T>(frame, FallthroughTask.<T>instance()));
+          }
+       } else {
+          CommandContext<T> executeContext = currentStage.getTopContext();
+-         if (executeContext.getCommand() instanceof CustomCommandExecutor<T> customCommandExecutor) {
++         if ((Object) executeContext.getCommand() instanceof CustomCommandExecutor<?> rawCommandExecutor) {
+             ExecutionControl<T> executionControl = ExecutionControl.create(context, frame);
+ 
+             for (T executionSource : currentSources) {
+-               customCommandExecutor.run(executionSource, currentStage, modifiers, executionControl);
++               ((CustomCommandExecutor<T>) rawCommandExecutor).run(executionSource, currentStage, modifiers, executionControl);
+             }
+          } else {
+             if (modifiers.isReturn()) {
+diff --git a/net/minecraft/commands/synchronization/SuggestionProviders.java b/net/minecraft/commands/synchronization/SuggestionProviders.java
+--- a/net/minecraft/commands/synchronization/SuggestionProviders.java
++++ b/net/minecraft/commands/synchronization/SuggestionProviders.java
+@@ -37,7 +37,7 @@
+       if (previous != null) {
+          throw new IllegalArgumentException("A command suggestion provider is already registered with the name '" + name + "'");
+       } else {
+-         return new SuggestionProviders.RegisteredSuggestion(name, provider);
++         return cast(new SuggestionProviders.RegisteredSuggestion(name, provider));
+       }
+    }
+ 
+diff --git a/net/minecraft/core/component/DataComponentPatch.java b/net/minecraft/core/component/DataComponentPatch.java
+--- a/net/minecraft/core/component/DataComponentPatch.java
++++ b/net/minecraft/core/component/DataComponentPatch.java
+@@ -20,7 +20,7 @@
+ 
+ public final class DataComponentPatch {
+    public static final DataComponentPatch EMPTY = new DataComponentPatch(Reference2ObjectMaps.emptyMap());
+-   public static final Codec<DataComponentPatch> CODEC = Codec.dispatchedMap(DataComponentPatch.PatchKey.CODEC, DataComponentPatch.PatchKey::valueCodec)
++   public static final Codec<DataComponentPatch> CODEC = Codec.<DataComponentPatch.PatchKey, Object>dispatchedMap(DataComponentPatch.PatchKey.CODEC, key -> (Codec<Object>) key.valueCodec())
+       .xmap(data -> {
+          if (data.isEmpty()) {
+             return EMPTY;
+diff --git a/net/minecraft/core/component/DataComponentType.java b/net/minecraft/core/component/DataComponentType.java
+--- a/net/minecraft/core/component/DataComponentType.java
++++ b/net/minecraft/core/component/DataComponentType.java
+@@ -110,7 +110,7 @@
+ 
+          @Override
+          public String toString() {
+-            return Util.getRegisteredName((Registry<DataComponentType.Builder.SimpleType<T>>)BuiltInRegistries.DATA_COMPONENT_TYPE, this);
++            return Util.getRegisteredName(BuiltInRegistries.DATA_COMPONENT_TYPE, this);
+          }
+       }
+    }
+diff --git a/net/minecraft/core/component/predicates/DataComponentPredicate.java b/net/minecraft/core/component/predicates/DataComponentPredicate.java
+--- a/net/minecraft/core/component/predicates/DataComponentPredicate.java
++++ b/net/minecraft/core/component/predicates/DataComponentPredicate.java
+@@ -26,7 +26,7 @@
+       )
+       .map(
+          singles -> singles.stream().collect(Collectors.toMap(DataComponentPredicate.Single::type, DataComponentPredicate.Single::predicate)),
+-         map -> map.entrySet().stream().map(DataComponentPredicate.Single::fromEntry).toList()
++         map -> map.entrySet().stream().<DataComponentPredicate.Single<?>>map(DataComponentPredicate.Single::fromEntry).toList()
+       );
+ 
+    static MapCodec<DataComponentPredicate.Single<?>> singleCodec(final String name) {
+diff --git a/net/minecraft/core/component/TypedDataComponent.java b/net/minecraft/core/component/TypedDataComponent.java
+--- a/net/minecraft/core/component/TypedDataComponent.java
++++ b/net/minecraft/core/component/TypedDataComponent.java
+@@ -11,7 +11,7 @@
+    public static final StreamCodec<RegistryFriendlyByteBuf, TypedDataComponent<?>> STREAM_CODEC = new StreamCodec<RegistryFriendlyByteBuf, TypedDataComponent<?>>() {
+       public TypedDataComponent<?> decode(final RegistryFriendlyByteBuf input) {
+          DataComponentType<?> type = DataComponentType.STREAM_CODEC.decode(input);
+-         return decodeTyped(input, (DataComponentType<T>)type);
++         return decodeTyped(input, type);
+       }
+ 
+       private static <T> TypedDataComponent<T> decodeTyped(final RegistryFriendlyByteBuf input, final DataComponentType<T> type) {
+@@ -19,7 +19,7 @@
+       }
+ 
+       public void encode(final RegistryFriendlyByteBuf output, final TypedDataComponent<?> value) {
+-         encodeCap(output, (TypedDataComponent<T>)value);
++         encodeCap(output, value);
+       }
+ 
+       private static <T> void encodeCap(final RegistryFriendlyByteBuf output, final TypedDataComponent<T> component) {
+diff --git a/net/minecraft/core/registries/BuiltInRegistries.java b/net/minecraft/core/registries/BuiltInRegistries.java
+--- a/net/minecraft/core/registries/BuiltInRegistries.java
++++ b/net/minecraft/core/registries/BuiltInRegistries.java
+@@ -392,7 +392,7 @@
+       Bootstrap.checkBootstrapCalled(() -> "registry " + name.identifier());
+       Identifier key = name.identifier();
+       LOADERS.put(key, () -> loader.run(registry));
+-      WRITABLE_REGISTRY.register((ResourceKey<WritableRegistry<?>>)name, registry, RegistrationInfo.BUILT_IN);
++      WRITABLE_REGISTRY.register((ResourceKey<WritableRegistry<?>>)(ResourceKey<?>)name, registry, RegistrationInfo.BUILT_IN);
+       return registry;
+    }
+ 
+diff --git a/net/minecraft/core/Registry.java b/net/minecraft/core/Registry.java
+--- a/net/minecraft/core/Registry.java
++++ b/net/minecraft/core/Registry.java
+@@ -136,7 +136,7 @@
+    Holder<T> wrapAsHolder(T value);
+ 
+    default Iterable<Holder<T>> getTagOrEmpty(final TagKey<T> id) {
+-      return DataFixUtils.orElse(this.get(id), List.<T>of());
++      return DataFixUtils.orElse(this.get(id), List.<Holder<T>>of());
+    }
+ 
+    Stream<HolderSet.Named<T>> getTags();
+diff --git a/net/minecraft/core/RegistrySetBuilder.java b/net/minecraft/core/RegistrySetBuilder.java
+--- a/net/minecraft/core/RegistrySetBuilder.java
++++ b/net/minecraft/core/RegistrySetBuilder.java
+@@ -416,7 +416,7 @@
+       }
+ 
+       private <T> Holder.Reference<T> getOrCreate(final ResourceKey<T> id) {
+-         return (Holder.Reference<T>)this.holders.computeIfAbsent(id, k -> Holder.Reference.createStandAlone(this.owner, (ResourceKey<Object>)k));
++         return (Holder.Reference<T>)this.holders.computeIfAbsent((ResourceKey<Object>)(ResourceKey<?>)id, k -> Holder.Reference.createStandAlone(this.owner, k));
+       }
+    }
+ 
+diff --git a/net/minecraft/data/info/RegistryDumpReport.java b/net/minecraft/data/info/RegistryDumpReport.java
+--- a/net/minecraft/data/info/RegistryDumpReport.java
++++ b/net/minecraft/data/info/RegistryDumpReport.java
+@@ -34,7 +34,7 @@
+          result.addProperty("default", defaultKey.toString());
+       }
+ 
+-      int registryId = BuiltInRegistries.REGISTRY.getId(registry);
++      int registryId = ((Registry<Registry<?>>) BuiltInRegistries.REGISTRY).getId(registry);
+       result.addProperty("protocol_id", registryId);
+       JsonObject entries = new JsonObject();
+       registry.listElements().forEach(holder -> {
+diff --git a/net/minecraft/locale/Language.java b/net/minecraft/locale/Language.java
+--- a/net/minecraft/locale/Language.java
++++ b/net/minecraft/locale/Language.java
+@@ -58,7 +58,7 @@
+          @Override
+          public FormattedCharSequence getVisualOrder(final FormattedText logicalOrderText) {
+             return outputx -> logicalOrderText.visit(
+-                  (style, contents) -> StringDecomposer.iterateFormatted(contents, style, output) ? Optional.empty() : FormattedText.STOP_ITERATION,
++                  (style, contents) -> StringDecomposer.iterateFormatted(contents, style, outputx) ? Optional.empty() : FormattedText.STOP_ITERATION,
+                   Style.EMPTY
+                )
+                .isPresent();
+diff --git a/net/minecraft/network/chat/LastSeenMessages.java b/net/minecraft/network/chat/LastSeenMessages.java
+--- a/net/minecraft/network/chat/LastSeenMessages.java
++++ b/net/minecraft/network/chat/LastSeenMessages.java
+@@ -42,7 +42,7 @@
+       public static final LastSeenMessages.Packed EMPTY = new LastSeenMessages.Packed(List.of());
+ 
+       public Packed(final FriendlyByteBuf input) {
+-         this(input.readCollection(FriendlyByteBuf.limitValue(ArrayList::new, 20), MessageSignature.Packed::read));
++         this(input.<MessageSignature.Packed, List<MessageSignature.Packed>>readCollection(FriendlyByteBuf.limitValue(ArrayList::new, 20), MessageSignature.Packed::read));
+       }
+ 
+       public void write(final FriendlyByteBuf output) {
+diff --git a/net/minecraft/network/protocol/common/custom/CustomPacketPayload.java b/net/minecraft/network/protocol/common/custom/CustomPacketPayload.java
+--- a/net/minecraft/network/protocol/common/custom/CustomPacketPayload.java
++++ b/net/minecraft/network/protocol/common/custom/CustomPacketPayload.java
+@@ -34,7 +34,7 @@
+ 
+          private <T extends CustomPacketPayload> void writeCap(final B output, final CustomPacketPayload.Type<T> type, final CustomPacketPayload payload) {
+             output.writeIdentifier(type.id());
+-            StreamCodec<B, T> codec = this.findCodec(type.id);
++            StreamCodec<B, T> codec = (StreamCodec<B, T>) this.findCodec(type.id);
+             codec.encode(output, (T)payload);
+          }
+ 
+diff --git a/net/minecraft/network/protocol/configuration/ClientboundUpdateEnabledFeaturesPacket.java b/net/minecraft/network/protocol/configuration/ClientboundUpdateEnabledFeaturesPacket.java
+--- a/net/minecraft/network/protocol/configuration/ClientboundUpdateEnabledFeaturesPacket.java
++++ b/net/minecraft/network/protocol/configuration/ClientboundUpdateEnabledFeaturesPacket.java
+@@ -14,7 +14,7 @@
+    );
+ 
+    private ClientboundUpdateEnabledFeaturesPacket(final FriendlyByteBuf input) {
+-      this(input.readCollection(HashSet::new, FriendlyByteBuf::readIdentifier));
++      this(input.<Identifier, Set<Identifier>>readCollection(HashSet::new, FriendlyByteBuf::readIdentifier));
+    }
+ 
+    private void write(final FriendlyByteBuf output) {
+diff --git a/net/minecraft/network/protocol/game/ClientboundGameRuleValuesPacket.java b/net/minecraft/network/protocol/game/ClientboundGameRuleValuesPacket.java
+--- a/net/minecraft/network/protocol/game/ClientboundGameRuleValuesPacket.java
++++ b/net/minecraft/network/protocol/game/ClientboundGameRuleValuesPacket.java
+@@ -12,7 +12,7 @@
+ import net.minecraft.world.level.gamerules.GameRule;
+ 
+ public record ClientboundGameRuleValuesPacket(Map<ResourceKey<GameRule<?>>, String> values) implements Packet<ClientGamePacketListener> {
+-   public static final StreamCodec<FriendlyByteBuf, ClientboundGameRuleValuesPacket> STREAM_CODEC = ByteBufCodecs.map(
++   public static final StreamCodec<FriendlyByteBuf, ClientboundGameRuleValuesPacket> STREAM_CODEC = ByteBufCodecs.<FriendlyByteBuf, ResourceKey<GameRule<?>>, String, Map<ResourceKey<GameRule<?>>, String>>map(
+          HashMap::new, ResourceKey.streamCodec(Registries.GAME_RULE), ByteBufCodecs.STRING_UTF8
+       )
+       .map(ClientboundGameRuleValuesPacket::new, ClientboundGameRuleValuesPacket::values);
+diff --git a/net/minecraft/network/syncher/EntityDataSerializers.java b/net/minecraft/network/syncher/EntityDataSerializers.java
+--- a/net/minecraft/network/syncher/EntityDataSerializers.java
++++ b/net/minecraft/network/syncher/EntityDataSerializers.java
+@@ -97,7 +97,7 @@
+    );
+    public static final EntityDataSerializer<Direction> DIRECTION = EntityDataSerializer.forValueType(Direction.STREAM_CODEC);
+    public static final EntityDataSerializer<Optional<EntityReference<LivingEntity>>> OPTIONAL_LIVING_ENTITY_REFERENCE = EntityDataSerializer.forValueType(
+-      EntityReference.streamCodec().apply(ByteBufCodecs::optional)
++      EntityReference.<LivingEntity>streamCodec().apply(ByteBufCodecs::optional)
+    );
+    public static final EntityDataSerializer<Optional<GlobalPos>> OPTIONAL_GLOBAL_POS = EntityDataSerializer.forValueType(
+       GlobalPos.STREAM_CODEC.apply(ByteBufCodecs::optional)
+diff --git a/net/minecraft/resources/HolderSetCodec.java b/net/minecraft/resources/HolderSetCodec.java
+--- a/net/minecraft/resources/HolderSetCodec.java
++++ b/net/minecraft/resources/HolderSetCodec.java
+@@ -63,7 +63,7 @@
+ 
+    private static <E> DataResult<HolderSet<E>> lookupTag(final HolderGetter<E> registry, final TagKey<E> key) {
+       return registry.get(key)
+-         .map(DataResult::success)
++         .<DataResult<HolderSet<E>>>map(DataResult::success)
+          .orElseGet(() -> DataResult.error(() -> "Missing tag: '" + key.location() + "' in '" + key.registry().identifier() + "'"));
+    }
+ 
+diff --git a/net/minecraft/server/dedicated/Settings.java b/net/minecraft/server/dedicated/Settings.java
+--- a/net/minecraft/server/dedicated/Settings.java
++++ b/net/minecraft/server/dedicated/Settings.java
+@@ -113,7 +113,7 @@
+       String value = this.getStringRaw(key);
+       V result = MoreObjects.firstNonNull(value != null ? deserializer.apply(value) : null, defaultValue);
+       this.properties.put(key, serializer.apply(result));
+-      return new Settings.MutableValue<>(key, result, serializer);
++      return new MutableValue<>(key, result, serializer);
+    }
+ 
+    protected <V> V get(
+diff --git a/net/minecraft/server/dialog/action/StaticAction.java b/net/minecraft/server/dialog/action/StaticAction.java
+--- a/net/minecraft/server/dialog/action/StaticAction.java
++++ b/net/minecraft/server/dialog/action/StaticAction.java
+@@ -14,7 +14,7 @@
+ 
+       for (ClickEvent.Action action : ClickEvent.Action.class.getEnumConstants()) {
+          if (action.isAllowedFromServer()) {
+-            MapCodec<ClickEvent> mapCodec = action.valueCodec();
++            MapCodec<ClickEvent> mapCodec = (MapCodec<ClickEvent>) (MapCodec<?>) action.valueCodec();
+             result.put(action, mapCodec.xmap(StaticAction::new, StaticAction::value));
+          }
+       }
+diff --git a/net/minecraft/server/jsonrpc/api/MethodInfo.java b/net/minecraft/server/jsonrpc/api/MethodInfo.java
+--- a/net/minecraft/server/jsonrpc/api/MethodInfo.java
++++ b/net/minecraft/server/jsonrpc/api/MethodInfo.java
+@@ -29,7 +29,7 @@
+       return RecordCodecBuilder.mapCodec(
+          i -> i.group(
+                Codec.STRING.fieldOf("description").forGetter(MethodInfo::description),
+-               paramsTypedCodec().fieldOf("params").forGetter(MethodInfo::params),
++               MethodInfo.<Params>paramsTypedCodec().fieldOf("params").forGetter(MethodInfo::params),
+                ResultInfo.<Result>typedCodec().optionalFieldOf("result").forGetter(MethodInfo::result)
+             )
+             .apply(i, MethodInfo::new)
+@@ -41,7 +41,7 @@
+    }
+ 
+    public record Named<Params, Result>(Identifier name, MethodInfo<Params, Result> contents) {
+-      public static final Codec<MethodInfo.Named<?, ?>> CODEC = typedCodec();
++      public static final Codec<MethodInfo.Named<?, ?>> CODEC = (Codec<MethodInfo.Named<?, ?>>)(Codec<?>)typedCodec();
+ 
+       public static <Params, Result> Codec<MethodInfo.Named<Params, Result>> typedCodec() {
+          return RecordCodecBuilder.create(
+diff --git a/net/minecraft/server/jsonrpc/api/Schema.java b/net/minecraft/server/jsonrpc/api/Schema.java
+--- a/net/minecraft/server/jsonrpc/api/Schema.java
++++ b/net/minecraft/server/jsonrpc/api/Schema.java
+@@ -36,19 +36,19 @@
+ public record Schema<T>(
+    Optional<URI> reference, List<String> type, Optional<Schema<?>> items, Map<String, Schema<?>> properties, List<String> enumValues, Codec<T> codec
+ ) {
+-   public static final Codec<? extends Schema<?>> CODEC = Codec.recursive(
++   public static final Codec<Schema<?>> CODEC = Codec.<Schema<?>>recursive(
+          "Schema",
+          subCodec -> RecordCodecBuilder.create(
+             i -> i.group(
+-                  (App<Mu<? extends Schema<?>>, Optional<URI>>)ReferenceUtil.REFERENCE_CODEC.optionalFieldOf("$ref").forGetter(Schema::reference),
+-                  (App<Mu<? extends Schema<?>>, List<String>>)ExtraCodecs.compactListCodec(Codec.STRING)
++                  ReferenceUtil.REFERENCE_CODEC.optionalFieldOf("$ref").forGetter(Schema::reference),
++                  ExtraCodecs.compactListCodec(Codec.STRING)
+                      .optionalFieldOf("type", List.of())
+                      .forGetter(Schema::type),
+-                  (App<Mu<? extends Schema<?>>, Optional<? extends Schema<?>>>)subCodec.optionalFieldOf("items").forGetter(Schema::items),
+-                  (App<Mu<? extends Schema<?>>, Map<String, ? extends Schema<?>>>)Codec.unboundedMap(Codec.STRING, subCodec)
++                  subCodec.optionalFieldOf("items").forGetter(Schema::items),
++                  Codec.unboundedMap(Codec.STRING, subCodec)
+                      .optionalFieldOf("properties", Map.of())
+                      .forGetter(Schema::properties),
+-                  (App<Mu<? extends Schema<?>>, List<String>>)Codec.STRING.listOf().optionalFieldOf("enum", List.of()).forGetter(Schema::enumValues)
++                  Codec.STRING.listOf().optionalFieldOf("enum", List.of()).forGetter(Schema::enumValues)
+                )
+                .apply(i, (ref, type, items, properties, enumValues) -> null)
+          )
+@@ -140,7 +140,7 @@
+    );
+ 
+    public static <T> Codec<Schema<T>> typedCodec() {
+-      return (Codec<Schema<T>>)CODEC;
++      return (Codec<Schema<T>>)(Codec<?>)CODEC;
+    }
+ 
+    public Schema<T> info() {
+diff --git a/net/minecraft/server/jsonrpc/IncomingRpcMethods.java b/net/minecraft/server/jsonrpc/IncomingRpcMethods.java
+--- a/net/minecraft/server/jsonrpc/IncomingRpcMethods.java
++++ b/net/minecraft/server/jsonrpc/IncomingRpcMethods.java
+@@ -355,7 +355,7 @@
+          .description("Get the available game rule keys and their current values")
+          .response("gamerules", Schema.TYPED_GAME_RULE_SCHEMA.asRef().asArray())
+          .register(methodRegistry, "gamerules");
+-      IncomingRpcMethod.method(GameRulesService::update)
++      IncomingRpcMethod.<GameRulesService.GameRuleUpdate<?>, GameRulesService.GameRuleUpdate<?>>method((api, update, client) -> GameRulesService.update(api, update, client))
+          .description("Update game rule value")
+          .param("gamerule", Schema.UNTYPED_GAME_RULE_SCHEMA.asRef())
+          .response("gamerule", Schema.TYPED_GAME_RULE_SCHEMA.asRef())
+diff --git a/net/minecraft/server/jsonrpc/methods/GameRulesService.java b/net/minecraft/server/jsonrpc/methods/GameRulesService.java
+--- a/net/minecraft/server/jsonrpc/methods/GameRulesService.java
++++ b/net/minecraft/server/jsonrpc/methods/GameRulesService.java
+@@ -52,10 +52,10 @@
+       private static <T> MapCodec<? extends GameRulesService.GameRuleUpdate<T>> getValueAndTypeCodec(final GameRule<T> gameRule) {
+          return RecordCodecBuilder.mapCodec(
+             i -> i.group(
+-                  (App<Mu<? extends GameRulesService.GameRuleUpdate<?>>, GameRuleType>)StringRepresentable.fromEnum(GameRuleType::values)
++                  StringRepresentable.fromEnum(GameRuleType::values)
+                      .fieldOf("type")
+                      .forGetter(r -> r.gameRule.gameRuleType()),
+-                  (App<Mu<? extends GameRulesService.GameRuleUpdate<?>>, T>)gameRule.valueCodec()
++                  gameRule.valueCodec()
+                      .fieldOf("value")
+                      .forGetter(GameRulesService.GameRuleUpdate::value)
+                )
+diff --git a/net/minecraft/server/level/ChunkTaskPriorityQueue.java b/net/minecraft/server/level/ChunkTaskPriorityQueue.java
+--- a/net/minecraft/server/level/ChunkTaskPriorityQueue.java
++++ b/net/minecraft/server/level/ChunkTaskPriorityQueue.java
+@@ -10,7 +10,7 @@
+ public class ChunkTaskPriorityQueue {
+    public static final int PRIORITY_LEVEL_COUNT = ChunkLevel.MAX_LEVEL + 2;
+    private final List<Long2ObjectLinkedOpenHashMap<List<Runnable>>> queuesPerPriority = IntStream.range(0, PRIORITY_LEVEL_COUNT)
+-      .mapToObj(priority -> new Long2ObjectLinkedOpenHashMap<>())
++      .mapToObj(priority -> new Long2ObjectLinkedOpenHashMap<List<Runnable>>())
+       .toList();
+    private volatile int topPriorityQueueIndex = PRIORITY_LEVEL_COUNT;
+    private final String name;
+diff --git a/net/minecraft/server/network/ServerGamePacketListenerImpl.java b/net/minecraft/server/network/ServerGamePacketListenerImpl.java
+--- a/net/minecraft/server/network/ServerGamePacketListenerImpl.java
++++ b/net/minecraft/server/network/ServerGamePacketListenerImpl.java
+@@ -1008,7 +1008,7 @@
+       if (carried.has(DataComponents.WRITABLE_BOOK_CONTENT)) {
+          ItemStack writtenBook = carried.transmuteCopy(Items.WRITTEN_BOOK);
+          writtenBook.remove(DataComponents.WRITABLE_BOOK_CONTENT);
+-         List<Filterable<Component>> pages = contents.stream().map(page -> this.filterableFromOutgoing(page).map(Component::literal)).toList();
++         List<Filterable<Component>> pages = contents.stream().map(page -> this.filterableFromOutgoing(page).<Component>map(Component::literal)).toList();
+          writtenBook.set(
+             DataComponents.WRITTEN_BOOK_CONTENT, new WrittenBookContent(this.filterableFromOutgoing(title), this.player.getPlainTextName(), 0, pages, true)
+          );
+diff --git a/net/minecraft/server/packs/metadata/MetadataSectionType.java b/net/minecraft/server/packs/metadata/MetadataSectionType.java
+--- a/net/minecraft/server/packs/metadata/MetadataSectionType.java
++++ b/net/minecraft/server/packs/metadata/MetadataSectionType.java
+@@ -10,7 +10,7 @@
+ 
+    public record WithValue<T>(MetadataSectionType<T> type, T value) {
+       public <U> Optional<U> unwrapToType(final MetadataSectionType<U> type) {
+-         return type == this.type ? Optional.of(this.value) : Optional.empty();
++         return type == this.type ? Optional.of((U)this.value) : Optional.empty();
+       }
+    }
+ }
+diff --git a/net/minecraft/util/AbstractListBuilder.java b/net/minecraft/util/AbstractListBuilder.java
+--- a/net/minecraft/util/AbstractListBuilder.java
++++ b/net/minecraft/util/AbstractListBuilder.java
+@@ -27,7 +27,7 @@
+ 
+    @Override
+    public ListBuilder<T> add(final T value) {
+-      this.builder = this.builder.map(b -> (T)this.append((B)b, value));
++      this.builder = this.builder.map(b -> this.append(b, value));
+       return this;
+    }
+ 
+diff --git a/net/minecraft/util/CubicSpline.java b/net/minecraft/util/CubicSpline.java
+--- a/net/minecraft/util/CubicSpline.java
++++ b/net/minecraft/util/CubicSpline.java
+@@ -62,7 +62,7 @@
+       return Codec.recursive(
+          "CubicSpline",
+          subSplineCodec -> Codec.either(Codec.FLOAT, CubicSpline.Multipoint.codec(coordinateCodec, subSplineCodec))
+-            .xmap(e -> e.map(CubicSpline.Constant::new, (Function<? super CubicSpline.Multipoint<I>, ? extends CubicSpline.Constant<I>>)(m -> m)), spline -> {
++            .xmap(e -> e.<CubicSpline<I>>map(CubicSpline.Constant::new, m -> m), spline -> {
+                return switch (spline) {
+                   case CubicSpline.Constant(float value) -> Either.left(value);
+                   case CubicSpline.Multipoint<I> multipoint -> Either.right(multipoint);
+diff --git a/net/minecraft/util/datafix/DataFixers.java b/net/minecraft/util/datafix/DataFixers.java
+--- a/net/minecraft/util/datafix/DataFixers.java
++++ b/net/minecraft/util/datafix/DataFixers.java
+@@ -1164,7 +1164,7 @@
+       );
+       Schema v3086 = fixerUpper.addSchema(3086, SAME_NAMESPACED);
+       fixerUpper.addFixer(
+-         new EntityVariantFix(v3086, "Change cat variant type", References.ENTITY, "minecraft:cat", "CatType", Util.make(new Int2ObjectOpenHashMap(), m -> {
++         new EntityVariantFix(v3086, "Change cat variant type", References.ENTITY, "minecraft:cat", "CatType", Util.make(new Int2ObjectOpenHashMap<String>(), m -> {
+             m.defaultReturnValue("minecraft:tabby");
+             m.put(0, "minecraft:tabby");
+             m.put(1, "minecraft:black");
+@@ -1199,7 +1199,7 @@
+       );
+       Schema v3087 = fixerUpper.addSchema(3087, SAME_NAMESPACED);
+       fixerUpper.addFixer(
+-         new EntityVariantFix(v3087, "Change frog variant type", References.ENTITY, "minecraft:frog", "Variant", Util.make(new Int2ObjectOpenHashMap(), m -> {
++         new EntityVariantFix(v3087, "Change frog variant type", References.ENTITY, "minecraft:frog", "Variant", Util.make(new Int2ObjectOpenHashMap<String>(), m -> {
+             m.put(0, "minecraft:temperate");
+             m.put(1, "minecraft:warm");
+             m.put(2, "minecraft:cold");
+diff --git a/net/minecraft/util/datafix/fixes/BlockEntityUUIDFix.java b/net/minecraft/util/datafix/fixes/BlockEntityUUIDFix.java
+--- a/net/minecraft/util/datafix/fixes/BlockEntityUUIDFix.java
++++ b/net/minecraft/util/datafix/fixes/BlockEntityUUIDFix.java
+@@ -21,7 +21,7 @@
+       return tag.get("Owner")
+          .get()
+          .map(ownerTag -> replaceUUIDString((Dynamic<?>)ownerTag, "Id", "Id").orElse((Dynamic<?>)ownerTag))
+-         .map(ownerTag -> tag.remove("Owner").set("SkullOwner", (Dynamic<?>)ownerTag))
++         .<Dynamic<?>>map(ownerTag -> tag.remove("Owner").set("SkullOwner", (Dynamic<?>)ownerTag))
+          .result()
+          .orElse(tag);
+    }
+diff --git a/net/minecraft/util/datafix/fixes/ChunkBedBlockEntityInjecterFix.java b/net/minecraft/util/datafix/fixes/ChunkBedBlockEntityInjecterFix.java
+--- a/net/minecraft/util/datafix/fixes/ChunkBedBlockEntityInjecterFix.java
++++ b/net/minecraft/util/datafix/fixes/ChunkBedBlockEntityInjecterFix.java
+@@ -40,8 +40,8 @@
+       return TypeRewriteRule.seq(
+          this.fixTypeEverywhere(
+             "InjectBedBlockEntityType",
+-            this.getInputSchema().findChoiceType(References.BLOCK_ENTITY),
+-            this.getOutputSchema().findChoiceType(References.BLOCK_ENTITY),
++            (Type) this.getInputSchema().findChoiceType(References.BLOCK_ENTITY),
++            (Type) this.getOutputSchema().findChoiceType(References.BLOCK_ENTITY),
+             ops -> v -> v
+          ),
+          this.fixTypeEverywhereTyped(
+diff --git a/net/minecraft/util/datafix/fixes/ChunkProtoTickListFix.java b/net/minecraft/util/datafix/fixes/ChunkProtoTickListFix.java
+--- a/net/minecraft/util/datafix/fixes/ChunkProtoTickListFix.java
++++ b/net/minecraft/util/datafix/fixes/ChunkProtoTickListFix.java
+@@ -177,7 +177,7 @@
+       int relativeZ = pos >>> 8 & 15;
+       String type = typeGetter.apply(container != null ? container.get().get(relativeX, relativeY, relativeZ) : null);
+       return tag.createMap(
+-         ImmutableMap.builder()
++         ImmutableMap.<Dynamic<?>, Dynamic<?>>builder()
+             .put(tag.createString("i"), tag.createString(type))
+             .put(tag.createString("x"), tag.createInt(sectionX * 16 + relativeX))
+             .put(tag.createString("y"), tag.createInt(sectionY * 16 + relativeY))
+diff --git a/net/minecraft/util/datafix/fixes/EntitySpawnerItemVariantComponentFix.java b/net/minecraft/util/datafix/fixes/EntitySpawnerItemVariantComponentFix.java
+--- a/net/minecraft/util/datafix/fixes/EntitySpawnerItemVariantComponentFix.java
++++ b/net/minecraft/util/datafix/fixes/EntitySpawnerItemVariantComponentFix.java
+@@ -32,9 +32,9 @@
+             String id = input.getOptional(idFinder).map(Pair::getSecond).orElse("");
+ 
+             return switch (id) {
+-               case "minecraft:salmon_bucket" -> input.updateTyped(componentsFinder, EntitySpawnerItemVariantComponentFix::fixSalmonBucket);
+-               case "minecraft:axolotl_bucket" -> input.updateTyped(componentsFinder, EntitySpawnerItemVariantComponentFix::fixAxolotlBucket);
+-               case "minecraft:tropical_fish_bucket" -> input.updateTyped(componentsFinder, EntitySpawnerItemVariantComponentFix::fixTropicalFishBucket);
++               case "minecraft:salmon_bucket" -> input.updateTyped(componentsFinder, (EntitySpawnerItemVariantComponentFix.Fixer) EntitySpawnerItemVariantComponentFix::fixSalmonBucket);
++               case "minecraft:axolotl_bucket" -> input.updateTyped(componentsFinder, (EntitySpawnerItemVariantComponentFix.Fixer) EntitySpawnerItemVariantComponentFix::fixAxolotlBucket);
++               case "minecraft:tropical_fish_bucket" -> input.updateTyped(componentsFinder, (EntitySpawnerItemVariantComponentFix.Fixer) EntitySpawnerItemVariantComponentFix::fixTropicalFishBucket);
+                case "minecraft:painting" -> input.updateTyped(
+                   componentsFinder,
+                   components -> Util.writeAndReadTypedOrThrow(components, components.getType(), EntitySpawnerItemVariantComponentFix::fixPainting)
+diff --git a/net/minecraft/util/datafix/fixes/LeavesFix.java b/net/minecraft/util/datafix/fixes/LeavesFix.java
+--- a/net/minecraft/util/datafix/fixes/LeavesFix.java
++++ b/net/minecraft/util/datafix/fixes/LeavesFix.java
+@@ -343,7 +343,7 @@
+          return this.isSkippable()
+             ? section
+             : section.update(DSL.remainderFinder(), tag -> tag.set("BlockStates", tag.createLongList(Arrays.stream(this.storage.getRaw()))))
+-               .set(this.paletteFinder, this.palette.stream().map(b -> Pair.of(References.BLOCK_STATE.typeName(), b)).collect(Collectors.toList()));
++               .set(this.paletteFinder, this.palette.stream().map(b -> Pair.<String, Dynamic<?>>of(References.BLOCK_STATE.typeName(), b)).collect(Collectors.toList()));
+       }
+ 
+       public boolean isSkippable() {
+diff --git a/net/minecraft/util/datafix/fixes/OptionsKeyLwjgl3Fix.java b/net/minecraft/util/datafix/fixes/OptionsKeyLwjgl3Fix.java
+--- a/net/minecraft/util/datafix/fixes/OptionsKeyLwjgl3Fix.java
++++ b/net/minecraft/util/datafix/fixes/OptionsKeyLwjgl3Fix.java
+@@ -136,7 +136,7 @@
+       return this.fixTypeEverywhereTyped(
+          "OptionsKeyLwjgl3Fix",
+          this.getInputSchema().getType(References.OPTIONS),
+-         input -> input.update(DSL.remainderFinder(), tag -> tag.getMapValues().map(map1 -> tag.createMap(map1.entrySet().stream().map(entry -> {
++         input -> input.update(DSL.remainderFinder(), tag -> tag.getMapValues().<com.mojang.serialization.Dynamic<?>>map(map1 -> tag.createMap(map1.entrySet().stream().map(entry -> {
+             if (entry.getKey().asString("").startsWith("key_")) {
+                int oldValue = Integer.parseInt(entry.getValue().asString(""));
+                if (oldValue < 0) {
+diff --git a/net/minecraft/util/datafix/fixes/OptionsKeyTranslationFix.java b/net/minecraft/util/datafix/fixes/OptionsKeyTranslationFix.java
+--- a/net/minecraft/util/datafix/fixes/OptionsKeyTranslationFix.java
++++ b/net/minecraft/util/datafix/fixes/OptionsKeyTranslationFix.java
+@@ -17,7 +17,7 @@
+       return this.fixTypeEverywhereTyped(
+          "OptionsKeyTranslationFix",
+          this.getInputSchema().getType(References.OPTIONS),
+-         input -> input.update(DSL.remainderFinder(), tag -> tag.getMapValues().map(map1 -> tag.createMap(map1.entrySet().stream().map(entry -> {
++         input -> input.update(DSL.remainderFinder(), tag -> tag.getMapValues().<com.mojang.serialization.Dynamic<?>>map(map1 -> tag.createMap(map1.entrySet().stream().map(entry -> {
+             if (entry.getKey().asString("").startsWith("key_")) {
+                String oldValue = entry.getValue().asString("");
+                if (!oldValue.startsWith("key.mouse") && !oldValue.startsWith("scancode.")) {
+diff --git a/net/minecraft/util/EncoderCache.java b/net/minecraft/util/EncoderCache.java
+--- a/net/minecraft/util/EncoderCache.java
++++ b/net/minecraft/util/EncoderCache.java
+@@ -33,7 +33,7 @@
+ 
+          @Override
+          public <T> DataResult<T> encode(final A input, final DynamicOps<T> ops, final T prefix) {
+-            return EncoderCache.this.cache.getUnchecked(new EncoderCache.Key<>(codec, input, ops)).map(value -> value instanceof Tag tag ? tag.copy() : value);
++            return EncoderCache.this.cache.getUnchecked(new EncoderCache.Key<>(codec, input, ops)).map(value -> (T) (value instanceof Tag tag ? tag.copy() : value));
+          }
+       };
+    }
+diff --git a/net/minecraft/util/ExtraCodecs.java b/net/minecraft/util/ExtraCodecs.java
+--- a/net/minecraft/util/ExtraCodecs.java
++++ b/net/minecraft/util/ExtraCodecs.java
+@@ -281,7 +281,7 @@
+          P max = l.get(1);
+          return makeInterval.apply(min, max);
+       }), p -> ImmutableList.of(getMin.apply((I)p), getMax.apply((I)p)));
+-      Codec<I> objectCodec = RecordCodecBuilder.<Pair>create(
++      Codec<I> objectCodec = RecordCodecBuilder.<Pair<P, P>>create(
+             i -> i.group(pointCodec.fieldOf(lowerBoundName).forGetter(Pair::getFirst), pointCodec.fieldOf(upperBoundName).forGetter(Pair::getSecond))
+                .apply(i, Pair::of)
+          )
+diff --git a/net/minecraft/util/SortedArraySet.java b/net/minecraft/util/SortedArraySet.java
+--- a/net/minecraft/util/SortedArraySet.java
++++ b/net/minecraft/util/SortedArraySet.java
+@@ -28,7 +28,7 @@
+    }
+ 
+    public static <T extends Comparable<T>> SortedArraySet<T> create(final int initialCapacity) {
+-      return new SortedArraySet<>(initialCapacity, Comparator.naturalOrder());
++      return new SortedArraySet<T>(initialCapacity, Comparator.naturalOrder());
+    }
+ 
+    public static <T> SortedArraySet<T> create(final Comparator<T> comparator) {
+diff --git a/net/minecraft/util/Util.java b/net/minecraft/util/Util.java
+--- a/net/minecraft/util/Util.java
++++ b/net/minecraft/util/Util.java
+@@ -624,7 +624,7 @@
+    public static <K extends Enum<K>, V> Map<K, V> makeEnumMap(final Class<K> keyType, final Function<K, V> function) {
+       EnumMap<K, V> map = new EnumMap<>(keyType);
+ 
+-      for (K key : (Enum[])keyType.getEnumConstants()) {
++      for (K key : keyType.getEnumConstants()) {
+          map.put(key, function.apply(key));
+       }
+ 
+diff --git a/net/minecraft/world/attribute/EnvironmentAttributeMap.java b/net/minecraft/world/attribute/EnvironmentAttributeMap.java
+--- a/net/minecraft/world/attribute/EnvironmentAttributeMap.java
++++ b/net/minecraft/world/attribute/EnvironmentAttributeMap.java
+@@ -17,7 +17,7 @@
+ public final class EnvironmentAttributeMap {
+    public static final EnvironmentAttributeMap EMPTY = new EnvironmentAttributeMap(Map.of());
+    public static final Codec<EnvironmentAttributeMap> CODEC = Codec.lazyInitialized(
+-      () -> Codec.dispatchedMap(EnvironmentAttributes.CODEC, Util.memoize(EnvironmentAttributeMap.Entry::createCodec))
++      () -> Codec.<EnvironmentAttribute<?>, EnvironmentAttributeMap.Entry<?, ?>>dispatchedMap(EnvironmentAttributes.CODEC, Util.memoize(attribute -> (Codec<EnvironmentAttributeMap.Entry<?, ?>>)(Codec<?>) EnvironmentAttributeMap.Entry.createCodec(attribute)))
+          .xmap(EnvironmentAttributeMap::new, v -> v.entries)
+    );
+    public static final Codec<EnvironmentAttributeMap> NETWORK_CODEC = CODEC.xmap(
+diff --git a/net/minecraft/world/attribute/modifier/AttributeModifier.java b/net/minecraft/world/attribute/modifier/AttributeModifier.java
+--- a/net/minecraft/world/attribute/modifier/AttributeModifier.java
++++ b/net/minecraft/world/attribute/modifier/AttributeModifier.java
+@@ -73,7 +73,7 @@
+    );
+ 
+    static <Value> AttributeModifier<Value, Value> override() {
+-      return AttributeModifier.OverrideModifier.INSTANCE;
++      return (AttributeModifier<Value, Value>) AttributeModifier.OverrideModifier.INSTANCE;
+    }
+ 
+    Subject apply(Subject subject, Argument argument);
+diff --git a/net/minecraft/world/entity/ai/behavior/InteractWith.java b/net/minecraft/world/entity/ai/behavior/InteractWith.java
+--- a/net/minecraft/world/entity/ai/behavior/InteractWith.java
++++ b/net/minecraft/world/entity/ai/behavior/InteractWith.java
+@@ -43,7 +43,7 @@
+                if (selfFilter.test(body) && entities.contains(isTargetValid)) {
+                   Optional<LivingEntity> closest = entities.findClosest(mob -> mob.distanceToSqr(body) <= interactionRangeSqr && isTargetValid.test(mob));
+                   closest.ifPresent(mob -> {
+-                     target.set(mob);
++                     target.set((T)mob);
+                      lookTarget.set(new EntityTracker(mob, true));
+                      walkTarget.set(new WalkTarget(new EntityTracker(mob, false), speedModifier, stopDistance));
+                   });
+diff --git a/net/minecraft/world/entity/ai/Brain.java b/net/minecraft/world/entity/ai/Brain.java
+--- a/net/minecraft/world/entity/ai/Brain.java
++++ b/net/minecraft/world/entity/ai/Brain.java
+@@ -231,7 +231,7 @@
+    }
+ 
+    private static <U> void callVisitor(final Brain.Visitor visitor, final MemoryModuleType<U> memoryModuleType, final MemorySlot<?> slot) {
+-      slot.visit(memoryModuleType, visitor);
++      ((MemorySlot<U>) slot).visit(memoryModuleType, visitor);
+    }
+ 
+    public <U> boolean isMemoryValue(final MemoryModuleType<U> memoryType, final U value) {
+diff --git a/net/minecraft/world/entity/animal/allay/AllayAi.java b/net/minecraft/world/entity/animal/allay/AllayAi.java
+--- a/net/minecraft/world/entity/animal/allay/AllayAi.java
++++ b/net/minecraft/world/entity/animal/allay/AllayAi.java
+@@ -64,7 +64,7 @@
+          0,
+          ImmutableList.of(
+             new Swim<>(0.8F),
+-            new AnimalPanic(2.5F),
++            new AnimalPanic<>(2.5F),
+             new LookAtTargetSink(45, 90),
+             new MoveToTargetSink(),
+             new CountDownCooldownTicks(MemoryModuleType.LIKED_NOTEBLOCK_COOLDOWN_TICKS),
+@@ -82,7 +82,7 @@
+             new GoAndGiveItemsToTarget<>(AllayAi::getItemDepositPosition, 2.25F, 20, AllayAi::onItemThrown),
+             StayCloseToTarget.create(AllayAi::getItemDepositPosition, Predicate.not(AllayAi::hasWantedItem), 4, 16, 2.25F),
+             SetEntityLookTargetSometimes.create(6.0F, UniformInt.of(30, 60)),
+-            new RunOne(
++            new RunOne<Allay>(
+                ImmutableList.of(Pair.of(RandomStroll.fly(1.0F), 2), Pair.of(SetWalkTargetFromLookTarget.create(1.0F, 3), 2), Pair.of(new DoNothing(30, 60), 1))
+             )
+          )
+diff --git a/net/minecraft/world/entity/animal/goat/GoatAi.java b/net/minecraft/world/entity/animal/goat/GoatAi.java
+--- a/net/minecraft/world/entity/animal/goat/GoatAi.java
++++ b/net/minecraft/world/entity/animal/goat/GoatAi.java
+@@ -73,7 +73,7 @@
+          0,
+          ImmutableList.of(
+             new Swim<>(0.8F),
+-            new AnimalPanic(2.0F),
++            new AnimalPanic<>(2.0F),
+             new LookAtTargetSink(45, 90),
+             new MoveToTargetSink(),
+             new CountDownCooldownTicks(MemoryModuleType.TEMPTATION_COOLDOWN_TICKS),
+diff --git a/net/minecraft/world/entity/animal/happyghast/HappyGhastAi.java b/net/minecraft/world/entity/animal/happyghast/HappyGhastAi.java
+--- a/net/minecraft/world/entity/animal/happyghast/HappyGhastAi.java
++++ b/net/minecraft/world/entity/animal/happyghast/HappyGhastAi.java
+@@ -37,7 +37,7 @@
+          0,
+          ImmutableList.of(
+             new Swim<>(0.8F),
+-            new AnimalPanic(2.0F, 0),
++            new AnimalPanic<>(2.0F, 0),
+             new LookAtTargetSink(45, 90),
+             new MoveToTargetSink(),
+             new CountDownCooldownTicks(MemoryModuleType.TEMPTATION_COOLDOWN_TICKS)
+diff --git a/net/minecraft/world/entity/EntityReference.java b/net/minecraft/world/entity/EntityReference.java
+--- a/net/minecraft/world/entity/EntityReference.java
++++ b/net/minecraft/world/entity/EntityReference.java
+@@ -118,7 +118,7 @@
+    }
+ 
+    public static <StoredEntityType extends UniquelyIdentifyable> @Nullable EntityReference<StoredEntityType> read(final ValueInput input, final String key) {
+-      return input.read(key, codec()).orElse(null);
++      return input.read(key, EntityReference.<StoredEntityType>codec()).orElse(null);
+    }
+ 
+    public static <StoredEntityType extends UniquelyIdentifyable> @Nullable EntityReference<StoredEntityType> readWithOldOwnerConversion(
+@@ -127,7 +127,7 @@
+       Optional<UUID> uuid = input.read(key, UUIDUtil.CODEC);
+       return uuid.isPresent()
+          ? of(uuid.get())
+-         : input.getString(key).map(oldName -> OldUsersConverter.convertMobOwnerIfNecessary(level.getServer(), oldName)).map(EntityReference::new).orElse(null);
++         : input.getString(key).map(oldName -> OldUsersConverter.convertMobOwnerIfNecessary(level.getServer(), oldName)).map(EntityReference<StoredEntityType>::new).orElse(null);
+    }
+ 
+    @Override
+diff --git a/net/minecraft/world/entity/monster/hoglin/HoglinAi.java b/net/minecraft/world/entity/monster/hoglin/HoglinAi.java
+--- a/net/minecraft/world/entity/monster/hoglin/HoglinAi.java
++++ b/net/minecraft/world/entity/monster/hoglin/HoglinAi.java
+@@ -105,7 +105,7 @@
+             SetWalkTargetAwayFrom.entity(MemoryModuleType.AVOID_TARGET, 1.3F, 15, false),
+             createIdleMovementBehaviors(),
+             SetEntityLookTargetSometimes.create(8.0F, UniformInt.of(30, 60)),
+-            EraseMemoryIf.<PathfinderMob>create(HoglinAi::wantsToStopFleeing, MemoryModuleType.AVOID_TARGET)
++            EraseMemoryIf.<Hoglin>create(HoglinAi::wantsToStopFleeing, MemoryModuleType.AVOID_TARGET)
+          ),
+          MemoryModuleType.AVOID_TARGET
+       );
+diff --git a/net/minecraft/world/entity/monster/piglin/PiglinAi.java b/net/minecraft/world/entity/monster/piglin/PiglinAi.java
+--- a/net/minecraft/world/entity/monster/piglin/PiglinAi.java
++++ b/net/minecraft/world/entity/monster/piglin/PiglinAi.java
+@@ -180,7 +180,7 @@
+             new SpearAttack(1.0, 1.0, 2.0F),
+             new SpearRetreat(1.0),
+             MeleeAttack.create(20),
+-            new CrossbowAttack(),
++            new CrossbowAttack<>(),
+             RememberIfHoglinWasKilled.create(),
+             EraseMemoryIf.create(PiglinAi::isNearZombified, MemoryModuleType.ATTACK_TARGET)
+          ),
+@@ -198,7 +198,7 @@
+             StartAttacking.<Piglin>create((level, piglin) -> piglin.isAdult(), PiglinAi::findNearestValidAttackTarget),
+             BehaviorBuilder.triggerIf(piglin -> !piglin.isDancing(), GoToTargetLocation.create(MemoryModuleType.CELEBRATE_LOCATION, 2, 1.0F)),
+             BehaviorBuilder.triggerIf(Piglin::isDancing, GoToTargetLocation.create(MemoryModuleType.CELEBRATE_LOCATION, 4, 0.6F)),
+-            new RunOne<LivingEntity>(
++            new RunOne<Piglin>(
+                ImmutableList.of(
+                   Pair.of(SetEntityLookTarget.create(EntityTypes.PIGLIN, 8.0F), 1),
+                   Pair.of(RandomStroll.stroll(0.6F, 2, 1), 1),
+@@ -231,7 +231,7 @@
+             SetWalkTargetAwayFrom.entity(MemoryModuleType.AVOID_TARGET, 1.0F, 12, true),
+             createIdleLookBehaviors(),
+             createIdleMovementBehaviors(),
+-            EraseMemoryIf.<PathfinderMob>create(PiglinAi::wantsToStopFleeing, MemoryModuleType.AVOID_TARGET)
++            EraseMemoryIf.<Piglin>create(PiglinAi::wantsToStopFleeing, MemoryModuleType.AVOID_TARGET)
+          ),
+          MemoryModuleType.AVOID_TARGET
+       );
+@@ -253,7 +253,7 @@
+                      .build()
+                )
+             ),
+-            DismountOrSkipMounting.<LivingEntity>create(8, PiglinAi::wantsToStopRiding)
++            DismountOrSkipMounting.<Piglin>create(8, PiglinAi::wantsToStopRiding)
+          ),
+          MemoryModuleType.RIDE_TARGET
+       );
+diff --git a/net/minecraft/world/entity/monster/piglin/StartHuntingHoglin.java b/net/minecraft/world/entity/monster/piglin/StartHuntingHoglin.java
+--- a/net/minecraft/world/entity/monster/piglin/StartHuntingHoglin.java
++++ b/net/minecraft/world/entity/monster/piglin/StartHuntingHoglin.java
+@@ -16,12 +16,12 @@
+                i.registered(MemoryModuleType.NEAREST_VISIBLE_ADULT_PIGLINS)
+             )
+             .apply(i, (huntable, angryAt, huntedRecently, nearestPiglins) -> (level, body, timestamp) -> {
+-               if (!body.isBaby() && !i.<List>tryGet(nearestPiglins).filter(p -> p.stream().anyMatch(StartHuntingHoglin::hasHuntedRecently)).isPresent()) {
++               if (!body.isBaby() && !i.tryGet(nearestPiglins).filter(p -> p.stream().anyMatch(StartHuntingHoglin::hasHuntedRecently)).isPresent()) {
+                   Hoglin target = i.get(huntable);
+                   PiglinAi.setAngerTarget(level, body, target);
+                   PiglinAi.dontKillAnyMoreHoglinsForAWhile(body);
+                   PiglinAi.broadcastAngerTarget(level, body, target);
+-                  i.<List>tryGet(nearestPiglins).ifPresent(p -> p.forEach(PiglinAi::dontKillAnyMoreHoglinsForAWhile));
++                  i.tryGet(nearestPiglins).ifPresent(p -> p.forEach(PiglinAi::dontKillAnyMoreHoglinsForAWhile));
+                   return true;
+                } else {
+                   return false;
+diff --git a/net/minecraft/world/entity/SpawnPlacements.java b/net/minecraft/world/entity/SpawnPlacements.java
+--- a/net/minecraft/world/entity/SpawnPlacements.java
++++ b/net/minecraft/world/entity/SpawnPlacements.java
+@@ -81,7 +81,7 @@
+       }
+ 
+       SpawnPlacements.Data data = DATA_BY_TYPE.get(type);
+-      return data == null || data.predicate.test(type, level, spawnReason, pos, random);
++      return data == null || ((SpawnPlacements.SpawnPredicate<T>) data.predicate).test(type, level, spawnReason, pos, random);
+    }
+ 
+    static {
+diff --git a/net/minecraft/world/item/AdventureModePredicate.java b/net/minecraft/world/item/AdventureModePredicate.java
+--- a/net/minecraft/world/item/AdventureModePredicate.java
++++ b/net/minecraft/world/item/AdventureModePredicate.java
+@@ -116,7 +116,7 @@
+       return predicates.stream()
+          .flatMap(predicatex -> predicatex.blocks().orElseThrow().stream())
+          .distinct()
+-         .map(block -> block.value().getName().withStyle(ChatFormatting.DARK_GRAY))
++         .<Component>map(block -> block.value().getName().withStyle(ChatFormatting.DARK_GRAY))
+          .toList();
+    }
+ 
+diff --git a/net/minecraft/world/item/component/KineticWeapon.java b/net/minecraft/world/item/component/KineticWeapon.java
+--- a/net/minecraft/world/item/component/KineticWeapon.java
++++ b/net/minecraft/world/item/component/KineticWeapon.java
+@@ -112,7 +112,7 @@
+          for (EntityHitResult hitResult : ProjectileUtil.getHitEntitiesAlong(
+                livingEntity, attackRange, e -> PiercingWeapon.canHitEntity(livingEntity, e), ClipContext.Block.COLLIDER
+             )
+-            .map(a -> List.of(), e -> (Collection)e)) {
++            .map(a -> List.<EntityHitResult>of(), e -> e)) {
+             Entity otherEntity = hitResult.getEntity();
+             if (otherEntity instanceof EnderDragonPart dragonPart) {
+                otherEntity = dragonPart.parentMob;
+diff --git a/net/minecraft/world/item/component/PiercingWeapon.java b/net/minecraft/world/item/component/PiercingWeapon.java
+--- a/net/minecraft/world/item/component/PiercingWeapon.java
++++ b/net/minecraft/world/item/component/PiercingWeapon.java
+@@ -79,7 +79,7 @@
+       boolean hitSomething = false;
+ 
+       for (EntityHitResult hitResult : ProjectileUtil.getHitEntitiesAlong(attacker, attackRange, e1 -> canHitEntity(attacker, e1), ClipContext.Block.COLLIDER)
+-         .map(a -> List.of(), e -> (Collection)e)) {
++         .map(a -> List.<EntityHitResult>of(), e -> e)) {
+          hitSomething |= attacker.stabAttack(hand, hitResult.getEntity(), damage, true, this.dealsKnockback, this.dismounts);
+       }
+ 
+diff --git a/net/minecraft/world/item/crafting/RecipeMap.java b/net/minecraft/world/item/crafting/RecipeMap.java
+--- a/net/minecraft/world/item/crafting/RecipeMap.java
++++ b/net/minecraft/world/item/crafting/RecipeMap.java
+@@ -34,7 +34,7 @@
+    }
+ 
+    public <I extends RecipeInput, T extends Recipe<I>> Collection<RecipeHolder<T>> byType(final RecipeType<T> type) {
+-      return (Collection<RecipeHolder<T>>)this.byType.get(type);
++      return (Collection<RecipeHolder<T>>)(Collection<?>)this.byType.get(type);
+    }
+ 
+    public Collection<RecipeHolder<?>> values() {
+diff --git a/net/minecraft/world/item/HoneycombItem.java b/net/minecraft/world/item/HoneycombItem.java
+--- a/net/minecraft/world/item/HoneycombItem.java
++++ b/net/minecraft/world/item/HoneycombItem.java
+@@ -66,7 +66,7 @@
+       Level level = context.getLevel();
+       BlockPos pos = context.getClickedPos();
+       BlockState oldState = level.getBlockState(pos);
+-      return getWaxed(oldState).map(waxedState -> {
++      return getWaxed(oldState).<InteractionResult>map(waxedState -> {
+          Player player = context.getPlayer();
+          ItemStack itemInHand = context.getItemInHand();
+          if (player instanceof ServerPlayer serverPlayer) {
+diff --git a/net/minecraft/world/level/biome/Climate.java b/net/minecraft/world/level/biome/Climate.java
+--- a/net/minecraft/world/level/biome/Climate.java
++++ b/net/minecraft/world/level/biome/Climate.java
+@@ -265,7 +265,7 @@
+          }
+ 
+          List<Climate.RTree.Leaf<T>> leaves = values.stream()
+-            .map(p -> new Climate.RTree.Leaf(p.getFirst(), p.getSecond()))
++            .map(p -> new Climate.RTree.Leaf<>(p.getFirst(), p.getSecond()))
+             .collect(Collectors.toCollection(ArrayList::new));
+          return new Climate.RTree<>(build(dimensions, leaves));
+       }
+diff --git a/net/minecraft/world/level/block/BaseEntityBlock.java b/net/minecraft/world/level/block/BaseEntityBlock.java
+--- a/net/minecraft/world/level/block/BaseEntityBlock.java
++++ b/net/minecraft/world/level/block/BaseEntityBlock.java
+@@ -34,6 +34,6 @@
+    protected static <E extends BlockEntity, A extends BlockEntity> @Nullable BlockEntityTicker<A> createTickerHelper(
+       final BlockEntityType<A> actual, final BlockEntityType<E> expected, final @Nullable BlockEntityTicker<? super E> ticker
+    ) {
+-      return expected == actual ? ticker : null;
++      return expected == actual ? (BlockEntityTicker<A>) ticker : null;
+    }
+ }
+diff --git a/net/minecraft/world/level/block/Block.java b/net/minecraft/world/level/block/Block.java
+--- a/net/minecraft/world/level/block/Block.java
++++ b/net/minecraft/world/level/block/Block.java
+@@ -605,7 +605,7 @@
+    }
+ 
+    private static <S extends StateHolder<?, S>, T extends Comparable<T>> S setValueHelper(final S state, final Property<T> property, final Object value) {
+-      return state.setValue(property, (Comparable)value);
++      return state.setValue(property, (T)value);
+    }
+ 
+    @Deprecated
+diff --git a/net/minecraft/world/level/block/entity/TestInstanceBlockEntity.java b/net/minecraft/world/level/block/entity/TestInstanceBlockEntity.java
+--- a/net/minecraft/world/level/block/entity/TestInstanceBlockEntity.java
++++ b/net/minecraft/world/level/block/entity/TestInstanceBlockEntity.java
+@@ -105,7 +105,7 @@
+    }
+ 
+    public Component getTestName() {
+-      return this.test().map(key -> Component.literal(key.identifier().toString())).orElse(INVALID_TEST_NAME);
++      return this.test().<Component>map(key -> Component.literal(key.identifier().toString())).orElse(INVALID_TEST_NAME);
+    }
+ 
+    private Optional<Holder.Reference<GameTestInstance>> getTestHolder() {
+diff --git a/net/minecraft/world/level/dimension/end/EnderDragonFight.java b/net/minecraft/world/level/dimension/end/EnderDragonFight.java
+--- a/net/minecraft/world/level/dimension/end/EnderDragonFight.java
++++ b/net/minecraft/world/level/dimension/end/EnderDragonFight.java
+@@ -112,7 +112,7 @@
+             UUIDUtil.CODEC.lenientOptionalFieldOf("dragon_uuid").forGetter(fight -> Optional.ofNullable(fight.dragonUUID)),
+             BlockPos.CODEC.lenientOptionalFieldOf("exit_portal_location").forGetter(fight -> Optional.ofNullable(fight.exitPortalLocation)),
+             Codec.list(Codec.INT).lenientOptionalFieldOf("gateways", new ArrayList<>()).forGetter(fight -> fight.gateways),
+-            Codec.list(EntityReference.codec()).optionalFieldOf("respawn_crystals", List.of()).forGetter(fight -> fight.respawnCrystals)
++            Codec.list(EntityReference.<EndCrystal>codec()).optionalFieldOf("respawn_crystals", List.of()).forGetter(fight -> fight.respawnCrystals)
+          )
+          .apply(i, EnderDragonFight::new)
+    );
+diff --git a/net/minecraft/world/level/gamerules/GameRuleMap.java b/net/minecraft/world/level/gamerules/GameRuleMap.java
+--- a/net/minecraft/world/level/gamerules/GameRuleMap.java
++++ b/net/minecraft/world/level/gamerules/GameRuleMap.java
+@@ -16,7 +16,7 @@
+ import org.jspecify.annotations.Nullable;
+ 
+ public final class GameRuleMap extends SavedData {
+-   public static final Codec<GameRuleMap> CODEC = Codec.dispatchedMap(BuiltInRegistries.GAME_RULE.byNameCodec(), GameRule::valueCodec)
++   public static final Codec<GameRuleMap> CODEC = Codec.<GameRule<?>, Object>dispatchedMap(BuiltInRegistries.GAME_RULE.byNameCodec(), rule -> (Codec<Object>) rule.valueCodec())
+       .xmap(GameRuleMap::ofTrusted, GameRuleMap::map);
+    public static final SavedDataType<GameRuleMap> TYPE = new SavedDataType<>(
+       Identifier.withDefaultNamespace("game_rules"), GameRuleMap::of, CODEC, DataFixTypes.SAVED_DATA_GAME_RULES
+diff --git a/net/minecraft/world/level/levelgen/feature/MultifaceGrowthFeature.java b/net/minecraft/world/level/levelgen/feature/MultifaceGrowthFeature.java
+--- a/net/minecraft/world/level/levelgen/feature/MultifaceGrowthFeature.java
++++ b/net/minecraft/world/level/levelgen/feature/MultifaceGrowthFeature.java
+@@ -27,7 +27,7 @@
+       } else if (!(config.placeBlock instanceof MultifaceSpreadeableBlock placerBlock)) {
+          return false;
+       } else {
+-         List var14 = config.getShuffledDirections(random);
++         List<Direction> var14 = config.getShuffledDirections(random);
+          if (placeGrowthIfPossible(placerBlock, level, origin, level.getBlockState(origin), config, random, var14)) {
+             return true;
+          }
+diff --git a/net/minecraft/world/level/storage/loot/functions/SetCustomModelDataFunction.java b/net/minecraft/world/level/storage/loot/functions/SetCustomModelDataFunction.java
+--- a/net/minecraft/world/level/storage/loot/functions/SetCustomModelDataFunction.java
++++ b/net/minecraft/world/level/storage/loot/functions/SetCustomModelDataFunction.java
+@@ -20,7 +20,7 @@
+ 
+ public class SetCustomModelDataFunction extends LootItemConditionalFunction {
+    private static final Codec<NumberProvider> COLOR_PROVIDER_CODEC = Codec.withAlternative(
+-      NumberProviders.CODEC, ExtraCodecs.RGB_COLOR_CODEC, ConstantValue::new
++      NumberProviders.CODEC, ExtraCodecs.RGB_COLOR_CODEC, value -> new ConstantValue(value.floatValue())
+    );
+    public static final MapCodec<SetCustomModelDataFunction> MAP_CODEC = RecordCodecBuilder.mapCodec(
+       i -> commonFields(i)
+diff --git a/net/minecraft/world/level/storage/loot/predicates/EnvironmentAttributeCheck.java b/net/minecraft/world/level/storage/loot/predicates/EnvironmentAttributeCheck.java
+--- a/net/minecraft/world/level/storage/loot/predicates/EnvironmentAttributeCheck.java
++++ b/net/minecraft/world/level/storage/loot/predicates/EnvironmentAttributeCheck.java
+@@ -18,7 +18,7 @@
+ 
+    @Override
+    public MapCodec<EnvironmentAttributeCheck<Value>> codec() {
+-      return (MapCodec<EnvironmentAttributeCheck<Value>>)MAP_CODEC;
++      return (MapCodec<EnvironmentAttributeCheck<Value>>)(MapCodec<?>)MAP_CODEC;
+    }
+ 
+    @Override
+diff --git a/net/minecraft/world/level/storage/loot/predicates/LootItemBlockStatePropertyCondition.java b/net/minecraft/world/level/storage/loot/predicates/LootItemBlockStatePropertyCondition.java
+--- a/net/minecraft/world/level/storage/loot/predicates/LootItemBlockStatePropertyCondition.java
++++ b/net/minecraft/world/level/storage/loot/predicates/LootItemBlockStatePropertyCondition.java
+@@ -27,7 +27,7 @@
+    private static DataResult<LootItemBlockStatePropertyCondition> validate(final LootItemBlockStatePropertyCondition condition) {
+       return condition.properties()
+          .flatMap(properties -> properties.checkState(condition.block().value().getStateDefinition()))
+-         .map(name -> DataResult.error(() -> "Block " + condition.block() + " has no property" + name))
++         .<DataResult<LootItemBlockStatePropertyCondition>>map(name -> DataResult.error(() -> "Block " + condition.block() + " has no property" + name))
+          .orElse(DataResult.success(condition));
+    }
+ 
