@@ -7,7 +7,7 @@
 ![Language](https://img.shields.io/badge/language-JDK_25-CE422B?logo=openjdk&logoColor=white)
 ![Decompiler](https://img.shields.io/badge/decompiler-Vineflower-6E4A8E)
 ![Platforms](https://img.shields.io/badge/platforms-Windows%20%7C%20Linux%20%7C%20macOS-4B5563)
-![Engineering Confidence: 9/10](https://img.shields.io/badge/Engineering%20Confidence-9%2F10-4CAF50)
+![Engineering Confidence: 7/10](https://img.shields.io/badge/Engineering%20Confidence-7%2F10-4CAF50)
 ![Architecture](https://img.shields.io/badge/architecture-hand%20designed-2E7D32)
 
 </div>
@@ -394,7 +394,7 @@ what the module compiles.
 
 ## 🧠 Engineering confidence
 
-**9/10 — Code written entirely with AI assistance, architecture and implementation choices made entirely by hand**
+**7/10 — Code written entirely with AI assistance, architecture and implementation choices made entirely by hand**
 
 The code of MCP Remastered was written entirely with the assistance of an AI, but the architecture
 and the implementation choices were made entirely by hand.
