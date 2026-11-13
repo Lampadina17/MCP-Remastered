@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>me.lampadina.mcp</groupId>
+    <artifactId>mcp-remastered-parent</artifactId>
+    <version>1.0.0</version>
+    <packaging>pom</packaging>
+
+    <!--
+      The project has two parts. The tool lives in tool/ and is what the user runs; the game lives
+      in game/ and holds the sources the decompiler wrote, the ones the user edits. The game is a
+      dependency of the tool, so that the classes of the game are on the classpath of the tool and
+      the launcher can start the game inside the debugger of the IDE without any manual step.
+    -->
+    <modules>
+        <module>tool</module>
+        <module>game</module>
+    </modules>
+
+    <name>MCP Remastered</name>
+    <description>
+        Tool that fetches the Mojang version manifest with GSON, filters it down to the
+        Minecraft 26.1+ era, lets the user pick a stable release or a snapshot, downloads the
+        client and server jars plus every library and asset, patches the bytecode, decompiles the
+        client with Vineflower and keeps a differential patching layer on top so that source
+        changes can be tracked across versions.
+    </description>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+
+        <!--
+          The tool targets JDK 25, the runtime Minecraft 26.x asks for: the class files of the game
+          are in the Java 25 format and Vineflower 1.12 needs at least Java 17 to run. The JDK used
+          to compile is taken from the toolchains, so the build works even when the system
+          JAVA_HOME still points at an older JDK.
+        -->
+        <maven.compiler.release>25</maven.compiler.release>
+        <jdk.toolchain.version>25</jdk.toolchain.version>
+
+        <gson.version>2.15.0</gson.version>
+        <asm.version>9.11.1</asm.version>
+        <vineflower.version>1.12.0</vineflower.version>
+        <junit.version>6.1.3</junit.version>
+
+        <main.class>mcp.remastered.engine.Main</main.class>
+    </properties>
+
+    <build>
+        <pluginManagement>
+            <plugins>
+                <!--
+                  mvn validate exec:exec runs the program in a separate JVM. The goal exec:java would run it
+                  inside the JVM of Maven itself, which can be older than the classes it has to load, so the
+                  JVM of the toolchain is used instead.
+
+                  The arguments of the program are given with -Dexec.args="...", the way the goal expects.
+                -->
+                <plugin>
+                    <groupId>org.codehaus.mojo</groupId>
+                    <artifactId>exec-maven-plugin</artifactId>
+                    <version>3.3.0</version>
+                    <configuration>
+                        <executable>java</executable>
+                        <!-- The tool works on the project it lives in, not on the module it is in. -->
+                        <workingDirectory>${session.executionRootDirectory}</workingDirectory>
+                        <toolchain>jdk</toolchain>
+                        <!--
+                          The libraries of the game have the system scope, which Maven keeps out of
+                          the runtime classpath. The scope of the test classpath has them all.
+                        -->
+                        <classpathScope>test</classpathScope>
+                        <commandlineArgs>-classpath %classpath ${main.class} ${exec.args}</commandlineArgs>
+                    </configuration>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+
+        <plugins>
+            <!--
+              Picks the JDK used to compile from the toolchains, so that the build does not depend on
+              the JAVA_HOME of the machine. A JDK 17 or newer is required: Vineflower 1.12 is compiled
+              for Java 17 and Minecraft 26.x ships Java 25 class files.
+            -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-toolchains-plugin</artifactId>
+                <version>3.2.0</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>select-jdk-toolchain</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <toolchains>
+                        <jdk>
+                            <version>[${jdk.toolchain.version},)</version>
+                        </jdk>
+                    </toolchains>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>

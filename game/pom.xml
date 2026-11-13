@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>me.lampadina.mcp</groupId>
+    <artifactId>mcp-remastered-game</artifactId>
+    <version>1.0.0</version>
+    <parent>
+        <groupId>me.lampadina.mcp</groupId>
+        <artifactId>mcp-remastered-parent</artifactId>
+        <version>1.0.0</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+    <dependencies>
+        <!--
+          The tool is on the classpath of the game: the launcher lives there and it starts the game
+          inside the debugger of the IDE. It is not packed with the game, the tool is a project of
+          its own.
+
+          The scope is the ordinary one on purpose: a provided dependency is left out of the
+          runtime classpath, and the IDE would then start the game without the launcher on it.
+        -->
+        <dependency>
+            <groupId>me.lampadina.mcp</groupId>
+            <artifactId>mcp-remastered</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+    </dependencies>
+    <properties>
+        <maven.compiler.release>25</maven.compiler.release>
+        <jdk.toolchain.version>25</jdk.toolchain.version>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
+    <build>
+        <sourceDirectory>../src/main/java</sourceDirectory>
+        <resources>
+            <resource><directory>../src/main/resources</directory></resource>
+        </resources>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-toolchains-plugin</artifactId>
+                <version>3.2.0</version>
+                <executions>
+                    <execution>
+                        <goals><goal>select-jdk-toolchain</goal></goals>
+                        <configuration><version>[${jdk.toolchain.version},)</version></configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.13.0</version>
+                <configuration>
+                    <jdkToolchain><version>[${jdk.toolchain.version},)</version></jdkToolchain>
+                </configuration>
+            </plugin>
+
+            <!--
+              The tool is on the classpath of the game so that the launcher can find the main class
+              of the game and start it inside the debugger of the IDE. It is not packed with the
+              game: the tool is a project of its own.
+            -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <executions>
+                    <!--
+                      Checks that the sources the decompiler wrote still describe the game: the
+                      bytecode they compile into is compared with the bytecode the game was built
+                      with. Run it with exec:exec@verify.
+                    -->
+                    <execution>
+                        <id>verify</id>
+                        <goals><goal>exec</goal></goals>
+                        <configuration>
+                            <executable>java</executable>
+                            <toolchain>jdk</toolchain>
+                            <classpathScope>test</classpathScope>
+                            <workingDirectory>${session.executionRootDirectory}</workingDirectory>
+                            <commandlineArgs>-classpath %classpath mcp.remastered.engine.pipeline.verify.Main ${exec.args}</commandlineArgs>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>

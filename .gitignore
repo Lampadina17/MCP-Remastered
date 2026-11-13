@@ -1,0 +1,26 @@
+target/
+*.class
+*.jar
+!.mvn/wrapper/maven-wrapper.jar
+.idea/
+*.iml
+.vscode/
+
+# The runtime of the game: a .minecraft folder.
+runtime/
+
+# The logs the game writes while it runs.
+logs/
+
+# The jar the tool exports.
+build/
+
+# The baseline of the differential layer and the patches between two versions.
+cache/
+patches/
+
+# The sources of the game and the assets it carries in its jar: they are the output of the
+# decompiler, not the code of the project, so they are not kept in the repository.
+src/main/java/net/
+src/main/java/com/
+src/main/resources/
